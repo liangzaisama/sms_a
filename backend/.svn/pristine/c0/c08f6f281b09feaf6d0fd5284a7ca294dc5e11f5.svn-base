@@ -1,0 +1,19 @@
+"""
+报警事件路由注册
+router 视图集路由
+urlpatterns 注册路由列表
+"""
+from rest_framework import routers
+
+from events import views
+
+urlpatterns = [
+
+]
+
+router = routers.DefaultRouter(trailing_slash=False)
+
+# 报警事件
+router.register(r'^alarm/events', views.AlarmEventViewSet, base_name='/events')
+
+urlpatterns += router.urls

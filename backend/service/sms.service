@@ -1,0 +1,15 @@
+[Unit]
+Description=SMS Service
+After=network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+User=root
+Group=root
+ExecStart=/usr/bin/sms -s all
+ExecStop=/usr/bin/sms -t all
+ExecReload=/usr/bin/sms -r all
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

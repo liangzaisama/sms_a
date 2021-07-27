@@ -1,0 +1,57 @@
+"""
+态势资源部分自定义滤器类
+
+Examples:
+    class View:
+        filter_backends = (CustomDjangoFilterBackend, )
+        filter_class = CameraFilter
+"""
+
+from django_filters import rest_framework as filters
+
+from events.models import DeployAlarmRecord
+from devices.models import CameraDevice, ResourceInfo
+from situations.models import FlightResource
+from security_platform.utils.exceptions import ParamError
+
+
+class CameraFilter(filters.FilterSet):
+    """摄像机过滤器"""
+
+    resource_type = filters.CharFilter(field_name="resource__resource_type")
+    resource_name = filters.CharFilter(field_name="resource__name")
+    device_name = filters.CharFilter(field_name="device_name", lookup_expr='icontains')
+    device_code = filters.CharFilter(field_name="device_code", lookup_expr='icontains')
+
+    class Meta:
+        model = CameraDevice
+        fields = ['resource_type', 'device_code', 'device_name', 'resource_name']
+
+    def is_valid(self):
+        """resource_type字段校验
+
+        resource_type未传递时跳过
+
+        Raises:
+            ParamError: resource_type校验失败时抛出异常
+        """
+        resource_type = self.data.get('resource_type')
+        if resource_type is None:
+            return
+
+        if resource_type not in ResourceInfo.ResourceType:
+            raise ParamError(param_name='resource_type')
+
+
+class FlightFilter(CameraFilter):
+    """航班过滤器"""
+
+    class Meta(CameraFilter.Meta):
+        model = FlightResource
+
+
+class DeployAlarmFilter(CameraFilter):
+    """布控报警过滤器"""
+
+    class Meta(CameraFilter.Meta):
+        model = DeployAlarmRecord

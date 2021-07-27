@@ -1,0 +1,151 @@
+import os
+import sys
+import time
+import logging
+import datetime
+
+import django
+import paho.mqtt.publish as publish
+from django.db import connection
+from django.db.models import F
+from django_redis import get_redis_connection
+
+file_path = os.path.abspath(__file__)
+file_format = file_path.rpartition('.')[-1]
+base_dir = os.path.dirname(file_path)
+sys.path.insert(0, os.path.join(os.path.dirname(base_dir)))
+sms_base_dir = os.path.dirname(os.path.dirname(base_dir))
+elk_script_dir = os.path.split(sms_base_dir)[0]+'{0}'.format('/ELK/scripts/delete-elk.sh')
+
+try:
+    # from security_platform.utils import constants, config
+    from manage import set_django_module
+
+    if not os.getenv('DJANGO_SETTINGS_MODULE'):
+        set_django_module()
+        django.setup()
+
+    # from organization.models import AreaInfo
+    # from event_management.utils import situation_point_calculate
+    # from event_management.models import AlarmEvent, EventPicture
+except ImportError:
+    raise ImportError("Couldn't import DJANGO_SETTINGS_MODULE")
+
+logger = logging.getLogger('cron')
+receive_file_path = base_dir + '/mqtt_receive.{0}'.format(file_format)
+
+
+def publish_message():
+    """
+    发送MQ服务校验消息
+    """
+    for i in range(5):
+        now = str(datetime.datetime.now())
+
+        try:
+            publish.single(
+                constants.RECEIVE_SERVER_CHECK_TOPIC,
+                now,
+                qos=1,
+                hostname=config.MQTT_SERVER_IP,
+                auth={'username': config.MQTT_USER, 'password': config.MQTT_PWD}
+            )
+        except Exception as e:
+            logger.info('发送消息失败:{0}'.format(e))
+        else:
+            # 发送成功
+            return now
+
+
+def query_message(message_key):
+    """
+    查询redis消息
+    """
+    redis_conn = get_redis_connection()
+    for _ in range(50):
+        resp = redis_conn.get(message_key)
+        if resp:
+            # 服务正常
+            return True
+        else:
+            time.sleep(0.1)
+
+    logger.info('未查询到结果')
+
+
+def check_receive_mq_server_status():
+    """
+    校验MQ接收服务状态
+    """
+    for _ in range(3):
+        message_key = publish_message()
+        if not message_key:
+            # 发送消息失败
+            return
+
+        if query_message(message_key):
+            # 服务正常
+            logger.info('服务正常')
+            return
+
+    logger.info('关闭接收服务')
+    command = "ps x|grep %s|grep -v grep |awk '{print $1}'|xargs kill -9" % receive_file_path
+    os.system(command)
+
+    logger.info('开启接收服务')
+    del os.environ['DJANGO_SETTINGS_MODULE']
+    command = 'nohup {0} {1} > /dev/null 2>&1 &'.format(sys.executable, receive_file_path)
+    logger.info(command)
+    os.system(command)
+
+
+def delete_log_info():
+    """
+    定时删除一个月之前的日志
+    """
+    command = f'bash {elk_script_dir}'
+    os.system(command)
+
+
+def calculate_situation_point():
+    """
+    计算态势分值 每分钟执行一次
+    """
+    now = datetime.datetime.now()
+    earliest_time = datetime.datetime(now.year, now.month, now.day, 00, 00, 00)
+    valid_time = datetime.datetime.now() - datetime.timedelta(minutes=constants.AUTOMATIC_EVENT_VALID_TIME)
+    if earliest_time > valid_time:
+        valid_time = earliest_time
+
+    logger.info('valid_time:{0}'.format(valid_time))
+
+    try:
+        for area in AreaInfo.objects.all():
+            # 区域，未进行态势测算过, 自动上报，已处置，处置时间在范围内
+            event_obj_list = AlarmEvent.objects.filter(
+                area=area,
+                calculate_situation=False,
+                source_type=AlarmEvent.SourceType.AUTO,
+                event_state=AlarmEvent.EventState.RELIEVED,
+                solved_time__range=(valid_time, now)
+            ).order_by('solved_time')
+
+            logger.info('event_obj_list:{0}'.format(event_obj_list))
+
+            multiple = len(event_obj_list) // constants.AUTOMATIC_EVENT_CUMULATIVE_COUNT
+            logger.info('multiple:{0}'.format(multiple))
+
+            # 已计算态势值的事件
+            update_event_obj_list = event_obj_list[0:multiple * constants.AUTOMATIC_EVENT_CUMULATIVE_COUNT]
+
+            # 更新态势值
+            situation_point_calculate(area.id, -multiple, update_event_obj_list)
+    except Exception as e:
+        logger.error('计算态势分值失败:{0}'.format(e))
+    else:
+        logger.info('计算态势分值成功')
+
+
+if __name__ == '__main__':
+    check_receive_mq_server_status()
+    # calculate_situation_point()

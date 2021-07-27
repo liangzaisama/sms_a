@@ -1,0 +1,65 @@
+import os
+from multiprocessing import Process
+
+from jpype._core import startJVM
+from jpype._jvmfinder import getDefaultJVMPath
+
+from esb.esb_receive import receive_msg_from_esb
+from esb.esb_publish import send_msg_to_esb
+
+
+class ProcessTypeEnum:
+    ESB_RECEIVE = 'ER'
+    ESB_PUBLISH = 'EP'
+    MQ_WORKER = 'MW'
+
+
+class CustomProcess(Process):
+
+    process_type = None
+
+    @classmethod
+    def get_process_type(cls):
+        assert cls.process_type is not None, (
+            "'%s' should either include a `process_type` attribute, "
+            "or override the `get_process_type()` method." % cls.__name__
+        )
+        return cls.process_type
+
+
+class EsbMsgProcess(CustomProcess):
+
+    def start_jvm(self):
+        """开启java虚拟机"""
+        startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=%s" % (os.getcwd() + "/jar/ZhMqRevice.jar"))
+
+    def _run(self):
+        raise NotImplementedError('method _run() must be Implemented.')
+
+    def run(self):
+        self.start_jvm()
+        self._run()
+
+
+class EsbReceiveProcess(EsbMsgProcess):
+    """收取航班系统esb消息进程"""
+
+    process_type = ProcessTypeEnum.ESB_RECEIVE
+
+    def _run(self):
+        receive_msg_from_esb()
+
+
+class EsbPublishProcess(EsbMsgProcess):
+    """发送消息到航班系统进程"""
+
+    process_type = ProcessTypeEnum.ESB_PUBLISH
+
+    def _run(self):
+        send_msg_to_esb()
+
+
+class MsgWorkerProcess(CustomProcess):
+    """其他子系统消息处理进程"""
+
+    process_type = ProcessTypeEnum.MQ_WORKER

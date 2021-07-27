@@ -1,0 +1,9 @@
+from multiprocessing import Manager
+
+Queue = Manager().Queue
+
+# 1w条消息大约占内存1.6M
+DEFAULT_QUEUE_LENGTH = 5000
+
+# 存储发送给esb消息的消息队列, 绝对不能卡住!
+esb_send_msg_queue = Queue(DEFAULT_QUEUE_LENGTH)

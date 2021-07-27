@@ -1,0 +1,32 @@
+"""esb发送消息进程
+
+send_msg_to_esb: 进程启动跳用函数，从进程队列esb_send_msg_queue中获取数据并发送到esb
+"""
+import time
+from threading import Thread
+
+from core import esb_send_msg_queue
+from core.worker import EsbPublishWorker
+from esb.esb_data_package import esb_msg_package
+
+
+class EsbInitPublishMsgThread(Thread):
+    """初始化消息执行线程"""
+
+    def run(self):
+        """将初始化消息放到队列，定时放，因为esb有发送间隔限制"""
+        for data in esb_msg_package.initial_request_data:
+            esb_send_msg_queue.put(data)
+
+            # 发送请求需要间隔11s，不然会发送请求消息失败
+            time.sleep(11)
+
+
+def send_msg_to_esb():
+    """发送数据到esb"""
+
+    # 发送基础请求事件
+    EsbInitPublishMsgThread().start()
+
+    # 开始处理给航班系统发送的额消息
+    EsbPublishWorker(esb_send_msg_queue).loop_forever()

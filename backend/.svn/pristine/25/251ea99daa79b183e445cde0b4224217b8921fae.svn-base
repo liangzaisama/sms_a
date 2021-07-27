@@ -1,0 +1,70 @@
+"""
+提供工具函数
+"""
+import datetime
+from paho.mqtt import publish
+
+from security_platform import config_parser
+
+
+def datetime_to_str(date_time, date_format='%Y-%m-%d %H:%M:%S'):
+    """datetime转格式化字符串"""
+    if date_time is None:
+        return date_time
+    return datetime.datetime.strftime(date_time, date_format)
+
+
+def blank_get(dict_obj, key):
+    """如果字典对应的key值为None, 将其转化为空字符串
+
+    Args:
+        dict_obj: 字典对象
+        key: 获取键字符串
+
+    Returns:
+        value: 返回值
+    """
+    value = dict_obj.get(key, '')
+    if value is None:
+        return ''
+
+    return value
+
+
+def iterable_to_str_tuple(iterable):
+    """将可迭代对象转化为字符串带括号的格式
+
+    为了方便使用原生sql的in查询时使用
+
+    Args:
+        iterable: 要转化的可迭代对象
+
+    Returns:
+        value: 转化后的字符串
+        Examples：
+            (1,2,3) -> '(1,2,3)'
+            (1,) -> '(1)'
+    """
+    if len(iterable) == 1:
+        return f'({iterable[0]})'
+
+    return str(tuple(iterable))
+
+
+def publish_message(topic, payload):
+    """使用短连接发送MQ消息，发送完毕关闭MQ连接
+
+    Args:
+        topic: 消息主题
+        payload: 消息内容
+    """
+    publish.single(
+        topic,
+        payload,
+        qos=1,
+        hostname=config_parser.get('MQTT', 'MQTT_SERVER_IP'),
+        auth={
+            'username': config_parser.get('MQTT', 'MQTT_USER'),
+            'password': config_parser.get('MQTT', 'MQTT_PWD')
+        }
+    )

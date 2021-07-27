@@ -1,0 +1,334 @@
+"""安保事件模块模型类
+
+模型类配置包括字段，表明，外键，索引等配置
+"""
+import time
+from collections import OrderedDict
+
+from django.db import models
+
+from devices.models import DeviceInfo
+from security_platform.utils.models import BaseModel
+from security_platform import TextChoices, IntegerChoices
+from situations.models import ResourceInfo
+
+
+class AlarmEvent(BaseModel):
+    """基础报警事件
+
+    包含人工报警事件、子系统设备报警事件的公共基础信息字段
+    便于查询列表和相关统计
+    """
+
+    class EventType(IntegerChoices):
+        """事件状态枚举"""
+        DEVICE = 1, '自动上报'
+        ARTIFICIAL = 2, '人工上报'
+        TRAILER = 3, '预警'
+
+    event_name = models.CharField('事件名称', max_length=50)
+    event_type = models.SmallIntegerField('事件类型', choices=EventType.choices, default=1)
+    event_code = models.CharField('事件编号', max_length=50, unique=True)
+    alarm_time = models.DateTimeField('报警时间')
+    area_code = models.CharField('所属区域', blank=True, max_length=20)
+    floor_code = models.CharField('所属楼层', blank=True, max_length=20)
+    priority = models.SmallIntegerField('事件等级（1-4，1级为最高级别）', default=4)
+    event_state = models.CharField('状态', max_length=20)
+    location_detail = models.CharField('事件位置(x,y)', max_length=30, blank=True)
+    event_description = models.TextField('事件描述', blank=True)
+
+    class Meta:
+        verbose_name = '基础报警事件'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_basic_alarm_event'
+
+    @classmethod
+    def generate_event_code(cls):
+        """生成事件ID
+
+        用于统一生成子系统报警和人工报警的事件ID
+        根据A+时间戳保留4位小数拼接字段串
+
+        Returns:
+            event_code: 事件ID
+        """
+        return 'A{0}'.format(str(round(time.time(), 4)).replace('.', ''))
+
+    @classmethod
+    def event_type_label(cls, event_type):
+        """映射事件状态为中文"""
+        if event_type == cls.EventType.DEVICE:
+            event_type = cls.EventType.DEVICE.label
+        elif event_type == cls.EventType.ARTIFICIAL:
+            event_type = cls.EventType.ARTIFICIAL.label
+        elif event_type == cls.EventType.TRAILER:
+            event_type = cls.EventType.TRAILER.label
+
+        return event_type
+
+    def __str__(self):
+        return self.event_name
+
+
+class DeviceAlarmEvent(AlarmEvent):
+    """子系统设备报警事件"""
+
+    class EventState(TextChoices):
+        """事件状态枚举"""
+        UNCONFIRMED = 'unconfirmed', '待确认'
+        UNDISPOSED = 'undisposed', '待处置'
+        RELIEVED = 'relieved', '已解除'
+
+    subsystem_event_id = models.CharField('子系统事件ID', max_length=50, unique=True)
+    alarm_type = models.CharField('报警类型(布控、行为识别..)', max_length=20, blank=True)
+    # alarm_device_code = models.CharField('报警设备编码', max_length=50)
+    device = models.ForeignKey(DeviceInfo, verbose_name='关联设备', on_delete=models.PROTECT)
+    belong_system = models.CharField('所属系统', max_length=20)
+    is_misrepresent = models.BooleanField('是否误报', null=True)
+    acknowledged_user = models.CharField('确认人', blank=True, max_length=20)
+    acknowledged_time = models.DateTimeField('确认时间', null=True)
+    acknowledged_opinion = models.CharField('确认意见', max_length=255, blank=True)
+    dispose_user = models.CharField('处置人', blank=True, max_length=20)
+    dispose_time = models.DateTimeField('处置时间', null=True)
+    dispose_opinion = models.CharField('处置意见', max_length=255, blank=True)
+
+    # 额外字段
+    pass_id = models.CharField('门禁通行证id', max_length=50, blank=True)
+
+    class Meta:
+        verbose_name = '系统报警事件'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_system_alarm_event'
+
+    @property
+    def ws_message(self):
+        """触发报警websocket消息构造"""
+        message = OrderedDict()
+        message['event_id'] = self.id
+        message['event_name'] = self.event_name
+        message['event_type'] = self.event_type
+        message['event_code'] = self.event_code
+        message['alarm_time'] = str(self.alarm_time)
+        message['area_name'] = self.area_code
+        message['floor_code'] = self.floor_code
+        message['priority'] = self.priority
+        message['event_state'] = self.event_state
+        message['location_detail'] = self.location_detail
+        message['event_description'] = self.event_description
+        message['publisher'] = True
+
+        return message
+
+    @classmethod
+    def event_state_label(cls, event_state):
+        if event_state == cls.EventState.UNCONFIRMED:
+            event_state = cls.EventState.UNCONFIRMED.label
+        elif event_state == cls.EventState.UNDISPOSED:
+            event_state = cls.EventState.UNDISPOSED.label
+        elif event_state == cls.EventState.RELIEVED:
+            event_state = cls.EventState.RELIEVED.label
+
+        return event_state
+
+
+class PersonAlarmEvent(AlarmEvent):
+    """人工快捷上报事件"""
+
+    class AlarmPersonType(IntegerChoices):
+        """人员类型枚举"""
+        PASSENGERS = 1, '公众'
+        STAFF = 2, '机场人员'
+
+    class EventState(TextChoices):
+        """事件状态枚举"""
+        UNAUDITED = 'unaudited', '待审核'
+        AUDITED = 'audited', '已审核'
+
+    alarm_person_name = models.CharField('报警人名称', max_length=20)
+    alarm_person_type = models.SmallIntegerField('报警人类别', choices=AlarmPersonType.choices)
+    alarm_person_mobile = models.CharField('报警人电话', max_length=20, blank=True)
+    # 处理
+    handled_user = models.CharField('处理人', max_length=20, blank=True)
+    handled_time = models.DateTimeField('处理时间', null=True)
+    handled_opinion = models.CharField('处理意见', max_length=255, blank=True)
+    # 审核
+    audit_user = models.CharField('审核人', max_length=20, blank=True)
+    audit_time = models.DateTimeField('审核时间', null=True)
+    audit_opinion = models.CharField('审核意见', max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = '人工报警事件'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_person_alarm_event'
+
+    @classmethod
+    def event_state_label(cls, event_state):
+        if event_state == cls.EventState.UNAUDITED:
+            event_state = cls.EventState.UNAUDITED.label
+        elif event_state == cls.EventState.AUDITED:
+            event_state = cls.EventState.AUDITED.label
+        return event_state
+
+
+class DeviceAlarmEventPicture(models.Model):
+    """子系统设备报警事件图片"""
+
+    event = models.ForeignKey(DeviceAlarmEvent, on_delete=models.CASCADE, verbose_name='报警事件')
+    address = models.CharField('报警图片地址', max_length=100)
+
+    class Meta:
+        verbose_name = '事件报警图片'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_event_picture'
+
+
+class DeviceAlarmEventCamera(models.Model):
+    """子系统设备报警事件关联摄像机"""
+
+    event = models.ForeignKey(DeviceAlarmEvent, on_delete=models.CASCADE, verbose_name='报警事件')
+    code = models.CharField('摄像机编码', max_length=50)
+    preset = models.CharField('摄像机预置位', max_length=5)
+
+    class Meta:
+        verbose_name = '事件关联摄像机'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_event_relate_camera'
+
+
+class SituationAlarmModel(models.Model):
+    """视频分析系统报警字段"""
+
+    resource = models.ForeignKey(ResourceInfo, null=True, blank=True, verbose_name='关联资源', on_delete=models.CASCADE)
+    event = models.OneToOneField(DeviceAlarmEvent, verbose_name='关联设备报警事件', on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True
+
+
+class DeployAlarmRecord(SituationAlarmModel):
+    """实时布控人员报警记录"""
+
+    person_db_image_url = models.CharField('人像库图片地址', max_length=200)
+    snap_image_url = models.CharField('抓拍图片地址', max_length=200)
+    score = models.FloatField('相似度')
+    person_name = models.CharField('姓名', blank=True, max_length=20)
+    person_sex = models.CharField('性别', null=True, blank=True, max_length=1)
+
+    class Meta:
+        verbose_name = '实时布控人员报警记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_deploy_alarm_record'
+
+    @property
+    def ws_message(self):
+        """触发报警websocket消息构造"""
+        message = OrderedDict()
+        message['event_id'] = self.event_id
+        message['person_db_image_url'] = self.person_db_image_url
+        message['snap_image_url'] = self.snap_image_url
+        message['score'] = self.score
+        message['person_name'] = self.person_name
+        message['person_sex'] = self.person_sex
+        message['publisher'] = True
+
+        return message
+
+
+class DeployPersonSnapRecord(models.Model):
+    """布控人员抓拍 2"""
+
+    resource = models.ForeignKey(ResourceInfo, verbose_name='关联资源', on_delete=models.CASCADE)
+    snap_image_url = models.CharField('抓拍图片地址', max_length=200)
+    snap_time = models.DateTimeField('抓拍时间')
+
+    class Meta:
+        verbose_name = '实时布控人员抓拍'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_deploy_snap_record'
+
+    @property
+    def ws_message(self):
+        """触发报警websocket消息构造"""
+        message = OrderedDict()
+        message['snap_place'] = self.resource.name
+        message['snap_image_url'] = self.snap_image_url
+        message['snap_time'] = self.snap_time
+        message['publisher'] = True
+
+        return message
+
+
+class PersonDensityRecord(SituationAlarmModel):
+    """密度报警记录 3"""
+
+    total_people_number = models.IntegerField('报警人数')
+    density_image_url = models.CharField('密度图地址', max_length=200)
+
+    class Meta:
+        verbose_name = '密度报警记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_density_alarm_record'
+
+    @property
+    def ws_message(self):
+        """触发报警websocket消息构造"""
+        message = OrderedDict()
+        message['density_image_url'] = self.density_image_url
+        message['alarm_time'] = self.event.alarm_time
+        message['event_id'] = self.event_id
+        message['priority'] = self.event.priority
+        message['device_name'] = self.event.device.device_name
+        message['device_code'] = self.event.device.device_code
+        message['flow_address'] = self.event.device.cameradevice.flow_address
+        message['publisher'] = True
+
+        return message
+
+
+# class PostureAlarmRecord(SituationAlarmModel):
+class BehaviorAlarmRecord(SituationAlarmModel):
+    """行为识别报警记录"""
+
+    alarm_image_url = models.CharField('报警图片地址', max_length=200)
+
+    class Meta:
+        verbose_name = '行为识别报警记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_posture_alarm_record'
+
+    @property
+    def ws_message(self):
+        """触发报警websocket消息构造"""
+        message = OrderedDict()
+        message['event_id'] = self.event_id
+        message['event_name'] = self.event.event_name
+        message['alarm_image_url'] = self.alarm_image_url
+        message['reverse_name'] = self.resource.name
+        message['alarm_time'] = str(self.event.alarm_time)
+        message['publisher'] = True
+
+        return message
+
+
+class PlaceAlarmRecord(SituationAlarmModel):
+    """机位报警记录 2"""
+
+    alarm_image_url = models.CharField('报警图片地址', max_length=200)
+
+    class Meta:
+        verbose_name = '机位报警记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_place_alarm_record'
+
+
+class PlaceEnsureRecord(SituationAlarmModel):
+    """机位保障记录"""
+
+    resource = models.ForeignKey(ResourceInfo, verbose_name='关联机位', on_delete=models.CASCADE)
+    ensure_node = models.CharField('保障节点名称', max_length=50)
+    ensure_time = models.DateTimeField('保障时间')
+
+    class Meta:
+        verbose_name = '机位保障记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_place_ensure_record'

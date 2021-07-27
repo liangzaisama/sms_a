@@ -1,0 +1,27 @@
+"""
+视频分析实时消息
+"""
+from events.models import DeployPersonSnapRecord
+from analysis_event import GenericAnalysisEventResource
+
+
+class DeploySnapAnalysisResource(GenericAnalysisEventResource):
+    """布控抓拍"""
+
+    model_class = DeployPersonSnapRecord
+
+    def set_label_info(self):
+        self._label_info['resource'] = self.resource
+        self._label_info['snap_time'] = self.get_time()
+        self._label_info['snap_image_url'] = self.label['imgUrl']
+
+
+class PeopleCurrentAnalysisResource(GenericAnalysisEventResource):
+    """排队实时"""
+
+    model_class = DeployPersonSnapRecord
+
+    def set_label_info(self):
+        self._label_info['resource'] = self.resource
+        self._label_info['snap_time'] = self.get_time()
+        self._label_info['snap_image_url'] = self.label['imgUrl']

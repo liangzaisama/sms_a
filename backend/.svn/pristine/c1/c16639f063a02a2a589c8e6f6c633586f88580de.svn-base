@@ -1,0 +1,69 @@
+import os
+from multiprocessing import Process
+
+from jpype._core import startJVM
+from jpype._jvmfinder import getDefaultJVMPath
+
+from esb.esb_receive import receive_msg_from_esb
+from esb.esb_publish import send_msg_to_esb
+
+
+class EsbMsgProcess(Process):
+
+    def start_jvm(self):
+        """开启java虚拟机"""
+        startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=%s" % (os.getcwd() + "/jar/ZhMqRevice.jar"))
+
+    def _run(self):
+        raise NotImplementedError('method _run() must be Implemented.')
+
+    def run(self):
+        self.start_jvm()
+        self._run()
+
+
+class EsbReceiveProcess(EsbMsgProcess):
+    """收取航班系统esb消息进程"""
+
+    def _run(self):
+        receive_msg_from_esb()
+
+
+class EsbPublishProcess(EsbMsgProcess):
+    """发送消息到航班系统进程"""
+
+    def _run(self):
+        send_msg_to_esb()
+
+
+class MsgWorkerProcess(Process):
+    """其他子系统消息处理进程"""
+
+    def run(self):
+        super(MsgWorkerProcess, self).run()
+
+
+class ProcessTypeEnum:
+    ESB_RECEIVE = 'ER'
+    ESB_PUBLISH = 'EP'
+    MQ_WORKER = 'MW'
+
+
+class ProcessFactory:
+
+    def create_process(self, **kwargs):
+        process_type = kwargs['process_type']
+
+        if process_type == ProcessTypeEnum.ESB_PUBLISH:
+            process = EsbPublishProcess(daemon=True)
+        elif process_type == ProcessTypeEnum.ESB_RECEIVE:
+            process = EsbReceiveProcess(daemon=True)
+        elif process_type == ProcessTypeEnum.MQ_WORKER:
+            process = MsgWorkerProcess(target=kwargs['msg_worker'](kwargs['queue']).loop_forever, daemon=True)
+        else:
+            raise TypeError('invalid ProcessTypeEnum')
+
+        process.kwargs = kwargs
+        process.start()
+
+        return process

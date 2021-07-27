@@ -1,0 +1,239 @@
+"""
+自定义django中间件
+"""
+import json
+import logging
+
+from django.utils.deprecation import MiddlewareMixin
+from rest_framework import status
+from rest_framework.response import Response
+
+from security_platform import TextChoices
+from security_platform.utils.mixins import _get_response_success_data
+
+
+class AddOperationFieldMiddleware(MiddlewareMixin):
+    """增加返回的业务字段
+
+    主要是给框架的代码返回时增加自己的业务字段
+    """
+
+    def add_operation_field(self, response):
+        """添加业务字段"""
+        response.data = _get_response_success_data(response.data)
+        response._is_rendered = False
+        response.render()
+
+    def is_add(self, response):
+        """判断是否需要添加"""
+        if isinstance(response, Response):
+            if (status.HTTP_200_OK <= response.status_code <= status.HTTP_207_MULTI_STATUS and
+                    'result' not in response.data):
+                return True
+
+        return False
+
+    def process_response(self, request, response):
+        """响应再次处理"""
+        if self.is_add(response):
+            self.add_operation_field(response)
+
+        return response
+
+
+class ApiLoggingMiddleware(MiddlewareMixin):
+    """自定义中间件"""
+    # 成功状态码
+    SUCCESS_CODE = [200, 201, 204]
+
+    class UserLogUtils(TextChoices):
+        USER = 'user', '用户'
+        ACTION = 'action', '登陆了'
+
+    class ActionName(TextChoices):
+        POST = 'POST', '创建了'
+        PUT = 'PUT', '编辑了'
+        PATCH = 'PATCH', '编辑了'
+        GET = 'GET', '查看了'
+        DELETE = 'DELETE', '删除了'
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.apiLogger = logging.getLogger('api')
+        self.action = None
+        self.ip = None
+        self.user_utils = None
+        self.user = None
+        self.plan = None
+        super().__init__(get_response)
+
+    def __call__(self, request):
+        """回调函数"""
+        response = None
+        if hasattr(self, 'process_request'):
+            response = self.process_request(request)
+        response = response or self.get_response(request)
+        if hasattr(self, 'check_response'):
+            response = self.check_response(request, response)
+            if hasattr(response, '_check'):
+                return response
+        if hasattr(self, 'process_response'):
+            response = self.process_response(request, response)
+        return response
+
+    def process_view(self, request, callback, callback_args, callback_kwargs):
+        """相应之前处理"""
+        request.re_body = getattr(request, 're_body', request.body)
+
+        try:
+            body = json.loads(request.re_body)
+        except Exception:
+            body = request.POST
+
+        if callback_kwargs:
+            pk = callback_kwargs['pk']
+            try:
+                # 获取要操作的model对象
+                model = callback.cls.queryset.model
+                # 获取要操作的数据对象
+                instance = model.objects.get(id=pk)
+            except Exception:
+                # 获取执行函数之后的response
+                response = callback(request, *callback_args, **callback_kwargs)
+                response.renderer_context['body'] = body
+                return response
+
+            # 获取执行函数之后的response
+            response = callback(request, *callback_args, **callback_kwargs)
+            response.renderer_context['instance'] = instance
+            response.renderer_context['body'] = body
+            return response
+
+        response = callback(request, *callback_args, **callback_kwargs)
+        if type(response) == Response:
+            response.renderer_context['body'] = body
+        return response
+
+    def user_login(self, body):
+        """用户登陆日志记录"""
+        user = body['username']
+        self.action = self.UserLogUtils.ACTION.label
+        self.apiLogger.info("{} {} {} {}  ".format(self.user_utils,
+                                                   user, self.action, self.ip))
+
+    def check_response(self, request, response):
+        """返回参数校验"""
+        action = request.method
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+
+        if response.status_code not in self.SUCCESS_CODE:
+            response._check = 'return'
+            return response
+        if type(response) is not Response:
+            response._check = 'return'
+            return response
+            # 获取动作
+        if action in self.ActionName.names:
+            # 翻译请求动作为中文
+            action = self.ActionName.dict_choices[action]
+        else:
+            response._check = 'return'
+            return response
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]  # 所以这里是真实的ip
+        else:
+            ip = request.META.get('REMOTE_ADDR')  # 这里获得代理ip
+
+        view = response.renderer_context['view']
+        try:
+            view.serializer_class
+        except Exception:
+            # 通用接口直接返回不做用户操作记录
+            response._check = 'return'
+            return response
+        if view.serializer_class is None and view.queryset is None:
+            # 通用接口直接返回不做用户操作记录
+            response._check = 'return'
+            return response
+        self.action = action
+        self.ip = ip
+        self.user_utils = self.UserLogUtils.USER.label
+
+        return response
+
+    def cancel_object(self, cn_model_name, response):
+        """记录删除数据日志"""
+        instance = response.renderer_context['instance']
+
+        self.apiLogger.info("{} {} {} {} {} {} ".format(self.user_utils, self.user, self.action,
+                                                        cn_model_name, instance, self.ip))
+
+    def put_object(self, cn_model_name, response):
+        """记录编辑数据日志"""
+
+        instance = response.renderer_context['instance']
+        self.apiLogger.info("{} {} {} {} {} {} ".format(self.user_utils, self.user, self.action,
+                                                        cn_model_name, instance, self.ip))
+
+    def create_object(self, model, cn_model_name, response):
+        """记录创建数据日志"""
+
+        # 获取新增数据名字
+        try:
+            instance = model.objects.all().order_by('-id')[0]
+        except Exception as e:
+            self.apiLogger.warning(e)
+            return response
+        self.apiLogger.info(
+            "{} {} {} {} {} {} ".format(self.user_utils, self.user, self.action, cn_model_name, instance, self.ip))
+
+    def get_objects(self, cn_model_name):
+        """记录获取数据列表日志"""
+        self.apiLogger.info(
+            "{} {} {} {} {} ".format(self.user_utils, self.user, self.action, cn_model_name, self.ip))
+
+    def get_object(self, cn_model_name, response):
+        """记录获取单条数据日志"""
+
+        instance = response.renderer_context['instance']
+        self.apiLogger.info("{} {} {} {} {} {} ".format(self.user_utils, self.user, self.action,
+                                                        cn_model_name, instance, self.ip))
+
+    def process_response(self, request, response):
+        """相应之后处理"""
+        body = response.renderer_context['body']
+        if request.path == '/authorizations/' and request.method == 'POST':
+            self.user_login(body)
+            return response
+
+        view = response.renderer_context['view']
+        pk = view.kwargs.get('pk')
+        self.user = request.user
+
+        try:
+            # 获取操作表的中文名
+            cn_model_name = view.model_name
+            # 获取要操作的model对象
+            model = view.queryset.model
+        except Exception as e:
+            self.apiLogger.warning(e)
+            return response
+
+        if request.method == "POST":
+            self.create_object(model, cn_model_name, response)
+            return response
+
+        if request.method == "DELETE":
+            self.cancel_object(cn_model_name, response)
+            return response
+
+        if request.method == "PUT" or request.method == "PATCH":
+            self.put_object(cn_model_name, response)
+            return response
+
+        if request.method == "GET":
+            if pk:
+                self.get_object(cn_model_name, response)
+                return response
+            self.get_objects(cn_model_name)
+            return response

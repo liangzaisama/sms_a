@@ -1,0 +1,28 @@
+from django.db import models
+
+from security_platform import TextChoices
+
+
+class SystemConfig(models.Model):
+    """用户IP白名单"""
+
+    class ConfigList(TextChoices):
+        SECURITY_SPEED = 'security_speed', '安检速度'
+
+    MIN_SECURITY_SPEED = 1
+    MAX_SECURITY_SPEED = 500
+    config_key = models.CharField('系统配置名称', unique=True, max_length=20)
+    config_value = models.CharField('系统配置值', max_length=100)
+
+    class Meta:
+        verbose_name = '系统配置'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_system_config'
+
+    @classmethod
+    def get_security_speed(cls):
+        config = cls.objects.get_or_create(
+            config_key=cls.ConfigList.SECURITY_SPEED,
+            defaults={'config_value': 30}
+        )
+        return config

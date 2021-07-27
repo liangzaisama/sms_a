@@ -1,0 +1,76 @@
+import uuid
+import datetime
+from collections import OrderedDict
+
+
+class EsbMsgPackage:
+    """发送给esb数据封装"""
+
+    COMMON_BASIC_REQUEST = 0
+    FLIGHT_BASIC_REQUEST = 1
+    ZUGY_BASIC_REQUEST = 2
+
+    def get_meta(self, msg_type, msg_son_type):
+        """获取消息meta数据字典"""
+        meta_data = OrderedDict()
+        meta_data['SNDR'] = 'T3SIP'
+        meta_data['RCVR'] = None
+        meta_data['SEQN'] = None
+        meta_data['DDTM'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        meta_data['TYPE'] = msg_type
+        meta_data['STYP'] = msg_son_type
+        meta_data['MGID'] = str(uuid.uuid1()).replace('-', '')
+        meta_data['RMID'] = None
+        meta_data['APOT'] = 'ZUGY'
+
+        return meta_data
+
+    def get_basic_request_data(self, msg_type, msg_son_type, basic_type):
+        publish_msg = OrderedDict()
+        publish_msg['META'] = self.get_meta(msg_type, msg_son_type)
+
+        if basic_type == self.COMMON_BASIC_REQUEST:
+            publish_msg['RQST'] = None
+        elif basic_type == self.ZUGY_BASIC_REQUEST:
+            publish_msg['RQST'] = OrderedDict()
+            publish_msg['RQST']['BAPT'] = 'ZUGY'
+        else:
+            publish_msg['RQDF'] = OrderedDict()
+            publish_msg['RQDF']['RQTP'] = None
+            publish_msg['RQDF']['BAPT'] = 'ZUGY'
+
+        return publish_msg
+
+    @property
+    def initial_request_data(self):
+        """服务启动初始化时加载数据"""
+        return [
+            # 机场
+            # self.get_basic_request_data('REQE', 'RQAP', self.COMMON_BASIC_REQUEST),
+            # 航班异常
+            # self.get_basic_request_data('REQE', 'RQAR', self.COMMON_BASIC_REQUEST),
+            # 航空公司
+            # self.get_basic_request_data('REQE', 'RQAW', self.COMMON_BASIC_REQUEST),
+            # 登机门
+            # self.get_basic_request_data('REQE', 'RQGT', self.ZUGY_BASIC_REQUEST),
+            # # 机位
+            # self.get_basic_request_data('REQE', 'RQST', self.ZUGY_BASIC_REQUEST),
+            # # 行李转盘
+            # self.get_basic_request_data('REQE', 'RQBL', self.ZUGY_BASIC_REQUEST),
+            # # 值机柜台
+            # self.get_basic_request_data('REQE', 'RQCC', self.ZUGY_BASIC_REQUEST),
+            # # 航班
+            # self.get_basic_request_data('REQE', 'RQDF', self.FLIGHT_BASIC_REQUEST),
+        ]
+
+    def package_analysis_data(self, msg_type, msg_son_type, analysis_data):
+        """封装视频分析数据"""
+        publish_msg = OrderedDict()
+        publish_msg['META'] = self.get_meta(msg_type, msg_son_type)
+        publish_msg['INFO'] = analysis_data
+
+        return publish_msg
+
+
+# esb数据封装类
+esb_msg_package = EsbMsgPackage()

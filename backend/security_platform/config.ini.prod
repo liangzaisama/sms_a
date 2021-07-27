@@ -1,0 +1,54 @@
+[uwsgi]
+socket=0.0.0.0:8000
+chdir=./
+static-map = /static=/security_platform/static
+wsgi-file=security_platform/wsgi.py
+vacuum = true
+processes=8
+threads=2
+master=True
+pidfile=logs/uwsgi.pid
+log-maxsize = 5000000
+daemonize=logs/uwsgi.log
+log-format = UWSGI: %(ftime) %(user) %(addr) %(method) %(uri) %(status) %(size) %(msecs) %(uagent)
+chmod-socket = 666
+virtualenv=/home/.virtualenvs/SMS
+buffer-size=65535
+post-buffering=32768
+listen=1024
+disable-logging = true
+
+[WEBSOCKET]
+WORKERS = 4
+PORT = 8001
+WEBSOCKET_ADDRESS = ws://192.168.21.97/ws/
+
+[MYSQL]
+MYSQL_HOST = 127.0.0.1
+MYSQL_PORT = 33061
+MYSQL_USER = sms
+MYSQL_PASSWORD = GyjcAb1@!#
+MYSQL_NAME = security_platform_v2
+
+[REDIS]
+REDIS_HOST = 127.0.0.1:6379
+SENTINELS =  [('192.168.21.96', 26380), ('192.168.21.11', 26380), ('192.168.21.150', 26380)]
+
+[MQTT]
+MQTT_SERVER_IP = 192.168.21.97
+MQTT_PORT = 1884
+AMQP_PORT = 5673
+MQTT_USER = admin
+MQTT_PWD = admin
+LOG_LEVEL = DEBUG
+SUBSYSTEM_USER = sms_subsystem
+SUBSYSTEM_PWD = sms_gyjc!@#
+
+[API_HOST]
+VAS = http://192.168.20.3
+ZVAMS = http://192.168.20.3:8004
+VMS = http://192.168.21.202:8000
+
+[VARIABLE]
+# 允许访问的ip
+ALLOWED_HOSTS = ['*']

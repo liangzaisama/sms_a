@@ -1,0 +1,85 @@
+import time
+import socket
+from threading import local
+
+from websocket import create_connection
+
+from security_platform import receive_logger as logger
+
+from utils.exceptions import WebsocketError
+
+
+class WebsocketConnectionWrapper:
+
+    def __init__(self, ws_url):
+        self.connection = None
+        self.ws_url = ws_url
+        self.max_age = 60
+        self.close_at = None
+
+    def connect(self):
+        try:
+            self.connection = create_connection(self.ws_url, timeout=self.max_age)
+        except (ConnectionError, socket.error):
+            raise WebsocketError('连接websocket失败 ws_url:%s', self.ws_url)
+        else:
+            self.close_at = time.time() + (self.max_age - 30)
+
+    def close(self):
+        if self.connection is not None:
+            try:
+                self.connection.close()
+            except:
+                pass
+            finally:
+                self.connection = None
+
+    def reconnect_if_obsolete(self):
+        """超时重连"""
+        if self.connection is not None:
+            if self.close_at is not None and time.time() >= self.close_at:
+                self.close()
+                self.connect()
+
+    def ensure_connection(self):
+        """确保存在连接"""
+        if self.connection is None:
+            self.connect()
+
+    def __enter__(self):
+        self.reconnect_if_obsolete()
+        self.ensure_connection()
+
+        return self.connection
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            return
+
+        logger.error('发送websocket消息失败:%s', exc_val)
+
+        self.close()
+        return True
+
+
+class WebsocketConnectionHandler:
+
+    def __init__(self):
+        self._connections = local()
+
+    def __getitem__(self, ws_url):
+        if hasattr(self._connections, ws_url):
+            return getattr(self._connections, ws_url)
+
+        conn = WebsocketConnectionWrapper(ws_url)
+        setattr(self._connections, ws_url, conn)
+        return conn
+
+    def __setitem__(self, key, value):
+        setattr(self._connections, key, value)
+
+    def __delitem__(self, key):
+        delattr(self._connections, key)
+
+
+ws_connections = WebsocketConnectionHandler()

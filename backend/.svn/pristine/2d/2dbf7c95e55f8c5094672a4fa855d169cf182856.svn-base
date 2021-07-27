@@ -1,0 +1,109 @@
+"""
+删除历史的视频分析数据
+
+非报警  默认30天
+布控抓拍 30天
+人数统计 60天
+机位保障 30天
+排队人数：不删除，跟摄像机一对一
+
+报警事件已关闭且超过60天
+密度报警
+布控报警
+机位报警
+行为识别报警
+姿态报警
+"""
+from datetime import datetime, timedelta
+
+from django_setup import logger, event_model, SystemConfig, FlightInfo, PassageWayCarPassThrough
+
+
+class GenericModelDeleter:
+    
+    model_classes = None
+    expire_config_name = None
+    
+    def get_model_classes(self):
+        assert self.model_classes is not None, (
+                "'%s' should either include a `delete_models` attribute, "
+                "or override the `get_model_classes()` method." % self.__class__.__name__
+        )
+        return self.model_classes
+    
+    def get_config_name(self):
+        assert self.expire_config_name is not None, (
+                "'%s' should either include a `config_key` attribute, "
+                "or override the `get_config_name()` method." % self.__class__.__name__
+        )
+        return self.expire_config_name
+    
+    def get_expire_config(self):
+        return SystemConfig.objects.get(config_key=self.get_config_name()).value
+    
+    def get_expire_time(self):
+        return datetime.now() - timedelta(days=self.get_expire_config())
+    
+    def delete(self):
+        for model in self.get_model_classes():
+            delete_info = model.objects.filter(create_time__lt=self.get_expire_time()).delete()
+            logger.info('删除数据:%s', delete_info)
+
+
+class AlarmEventDeleter(GenericModelDeleter):
+    """报警事件删除器"""
+    model_classes = [event_model.AlarmEvent]
+    expire_config_name = SystemConfig.ConfigKey.EVENT_DELETE
+
+
+class SubsystemCurrentEventDeleter(GenericModelDeleter):
+    """子系统实时事件删除器"""
+    model_classes = [FlightInfo, PassageWayCarPassThrough]
+    expire_config_name = SystemConfig.ConfigKey.SUBSYSTEM_CURRENT
+
+
+class AnalysisAlarmEventDeleter(GenericModelDeleter):
+    """视频分析报警事件删除器"""
+    model_classes = [
+        event_model.DeployAlarmRecord, 
+        event_model.PersonDensityRecord, 
+        event_model.BehaviorAlarmRecord,
+        event_model.PostureAlarmRecord, 
+        event_model.PlaceAlarmRecord, 
+    ]
+    expire_config_name = SystemConfig.ConfigKey.ANALYSIS_ALARM
+
+
+class AnalysisCurrentEventDeleter(GenericModelDeleter):
+    """视频分析实时事件删除器"""
+    model_classes = [
+        event_model.DeployPersonSnapRecord,
+        event_model.PeopleCountingRecord,
+        event_model.PlaceSafeguardRecord,
+    ]
+    expire_config_name = SystemConfig.ConfigKey.ANALYSIS_CURRENT
+
+
+class Main:
+
+    deleter_classes = [
+        AlarmEventDeleter,
+        SubsystemCurrentEventDeleter,
+        AnalysisAlarmEventDeleter,
+        AnalysisCurrentEventDeleter,
+    ]
+    
+    def get_deleter(self):
+        return [deleter() for deleter in self.deleter_classes]
+    
+    def __call__(self, *args, **kwargs):
+        logger.info('delete_history_data')
+        for deleter in self.get_deleter():
+            deleter.delete()
+
+
+delete_expire_data = Main()
+
+
+if __name__ == '__main__':
+    delete_expire_data()

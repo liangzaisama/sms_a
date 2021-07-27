@@ -1,0 +1,189 @@
+import math
+import datetime
+from collections import OrderedDict
+
+from django.db import connection
+
+
+def datetime_to_str(date_time):
+    """datetime转格式化字符串"""
+    return date_time.time().strftime('%H:%M:%S')
+
+
+def current_time_transform(detection_time):
+    """当前时间转化
+
+    3种时间情况
+    1：整点时间，取本身时间值
+    2：非整点时间，取本身时间下个小时值
+    3：超过23点的时间数据处理为23点59分59秒
+
+    """
+    statistical_kwargs = OrderedDict(
+        year=detection_time.year,
+        month=detection_time.month,
+        day=detection_time.day,
+        hour=detection_time.hour
+    )
+
+    if detection_time.minute != 0 or detection_time.second != 0 or detection_time.microsecond != 0:
+        # 非整点时间
+
+        if detection_time.hour != 23:
+            statistical_kwargs['hour'] += 1
+        else:
+            # 24点 == 23点59分59秒
+            statistical_kwargs['minute'] = 59
+            statistical_kwargs['second'] = 59
+
+    return datetime.datetime(**statistical_kwargs)
+
+
+class PeopleCountingIntegrate:
+    """人数统计数据集成"""
+
+    def __init__(self, current_time, resources):
+        self._current_time = current_time
+        self._resources = self.validate_resources_and_transform(resources)
+        self._current_time_str = datetime_to_str(current_time)
+        self._current_statistical_time = current_time_transform(current_time)
+        self._data = None
+        self._speed = None
+
+    def create_days_data(self):
+        time_data = OrderedDict()
+
+        for i in range(25):
+            # i-> 0-24
+            if i < 24:
+                # 0-23点
+                time_data[f'{i:02d}:00:00'] = 0
+            else:
+                # 24点
+                time_data[f'23:59:59'] = 0
+
+        return time_data
+
+    def execute_sql(self, sql):
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            return cursor.fetchall()
+
+    def query_sql_data(self):
+        sql = f'Select statistical_time,sum(total_people) From tb_people_counting_records Where resource_id ' \
+              f'in {self._resources} and statistical_time >= "{self._current_time.date()}" ' \
+              f'group by statistical_time;'
+
+        return self.execute_sql(sql)
+
+    def validate_resources_and_transform(self, resources):
+        assert isinstance(resources, tuple), ("resources请传入元组",)
+
+        if len(resources) == 1:
+            return f'({resources[0]})'
+        else:
+            return str(resources)
+
+    def _set_resources(self, resources):
+        self._resources = self.validate_resources_and_transform(resources)
+        self._data = None
+        self._speed = None
+
+    @property
+    def resources(self):
+        return self._resources
+
+    @resources.setter
+    def resources(self, resources):
+        """更新资源信息"""
+        self._set_resources(resources)
+
+    @property
+    def current_time(self):
+        return self._current_time
+
+    @property
+    def total_count(self):
+        return int(sum(self.data.values()))
+
+    @property
+    def data(self):
+        if self._data is None:
+            self._get_data()
+
+        return self._data
+
+    @property
+    def speed(self):
+        if self._speed is None:
+            self._get_speed()
+
+        return self._speed
+
+    def _get_speed(self):
+        """获取速度"""
+        last_hour_time = self._current_statistical_time - datetime.timedelta(hours=1)
+
+        if datetime_to_str(last_hour_time) in self.data:
+            per_second_speed = self.data[self._current_time_str] / (self._current_time - last_hour_time).seconds
+            self._speed = math.ceil(per_second_speed * 3600)
+        else:
+            self._speed = 0
+
+    def _get_data(self):
+        """获取数据"""
+        data = self.create_days_data()
+        query_data = self.query_sql_data()
+
+        for row_data in query_data:
+            data[datetime_to_str(row_data[0])] += int(row_data[1])
+
+        data[self._current_time_str] = data.pop(datetime_to_str(self._current_statistical_time))
+
+        self._data = dict(sorted(data.items(), key=lambda x: x[0]))
+
+
+class PrePeopleCountingIntegrate(PeopleCountingIntegrate):
+    """预测数据集成"""
+
+    def query_sql_data(self):
+        weekday = self._current_time.weekday()
+        start_time = self._current_time.date() - datetime.timedelta(days=7 * 4)
+
+        sql = f'Select statistical_time,sum(total_people) From tb_people_counting_record Where ' \
+              f'date_format(statistical_time,"%w")={weekday + 1 if weekday != 6 else 0} and resource_id in ' \
+              f'{self._resources} and statistical_time >= "{str(start_time)}" and statistical_time ' \
+              f'< "{str(self._current_time.date())}" group by statistical_time;'
+
+        return self.execute_sql(sql)
+
+    def _get_speed(self):
+        last_hour_time = self._current_statistical_time - datetime.timedelta(hours=1)
+
+        if datetime_to_str(last_hour_time) in self.data:
+            self._speed = self.data[datetime_to_str(self._current_statistical_time)]
+        else:
+            self._speed = 0
+
+    def sql_data_process(self, query_data):
+        """
+        将相同小时的数据整合在一起，统计总数和累加次数
+        """
+        history_data = OrderedDict()
+        for row_data in query_data:
+            key = row_data[0].time()
+            history_data.setdefault(key, [0, 0])
+            history_data[key][0] += row_data[1]
+            history_data[key][1] += 1
+
+        return history_data
+
+    def _get_data(self):
+        data = self.create_days_data()
+        query_data = self.query_sql_data()
+
+        for key, value in self.sql_data_process(query_data).items():
+            if value[1]:
+                data[key.strftime('%H:%M:%S')] += math.ceil(value[0] / value[1])
+
+        self._data = data

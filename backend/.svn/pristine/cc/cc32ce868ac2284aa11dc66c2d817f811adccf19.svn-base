@@ -1,0 +1,194 @@
+import os
+import sys
+from collections import OrderedDict
+from itertools import islice
+
+import requests
+import pandas as pd
+from django.conf import settings
+from django.apps import AppConfig
+from django.db.models.signals import post_migrate
+
+from security_platform import config_parser
+
+
+def get_export_data(sheet_name, file_path=settings.API_SETTINGS.EXPORT_PATH, **kwargs):
+    """读取excel数据"""
+    data = pd.read_excel(file_path, sheet_name)
+    for i in data.index:
+        yield OrderedDict(data.loc[i], **kwargs)
+
+
+def bulk_create_data(model_class, batch_data):
+    """批量创建"""
+    batch_size = 100
+    objs = (model_class(**data) for data in batch_data)
+
+    while True:
+        batch = list(islice(objs, batch_size))
+        if not batch:
+            break
+
+        model_class.objects.bulk_create(batch, batch_size, ignore_conflicts=True)
+
+
+def single_create_data(model_class, batch_data):
+    """依次创建"""
+    for data in batch_data:
+        try:
+            model_class.objects.create(**data)
+        except Exception as e:
+            print(f'数据导入失败:{e}')
+            print(f'导入设备数据:{data}')
+
+
+def get_vms_access_token():
+    """获取vms接口凭证"""
+    try:
+        response = requests.post(
+            f"{config_parser.get('API_HOST', 'ZVAMS')}/userlogin",
+            data={'username': 'admin', 'password': 'admin'}
+        )
+
+        return response.json()['accessToken']
+    except Exception as e:
+        print('获取token失败:', e)
+
+
+def get_vms_camera_list(token):
+    """获取vms接口凭证"""
+    try:
+        response = requests.get(
+            f"{config_parser.get('API_HOST', 'VMS')}/vms/CameraDevices",
+            headers={'Authorization': token}
+        )
+
+        return response.json()['data']
+    except Exception as e:
+        print('获取摄像机列表失败:', e)
+
+
+def create_default_camera_data(**kwargs):
+    """创建默认摄像机数据"""
+    sys.path.insert(0, os.path.join(os.path.dirname(settings.BASE_DIR), 'mqtt_receive'))
+
+    from mqtt_receive.core.generics import LabelResourceBulkProxy
+    from mqtt_receive.views.device import CameraDeviceResource
+
+    try:
+        CameraDevice = kwargs['apps'].get_model('devices', 'CameraDevice')
+    except LookupError:
+        return
+
+    if not CameraDevice.objects.count():
+        # 无数据，需要导入
+        camera_list = get_vms_camera_list(get_vms_access_token())
+        if camera_list:
+            LabelResourceBulkProxy(camera_list, (), CameraDeviceResource).create()
+
+
+def create_default_test_camera_data(**kwargs):
+    """创建北京测试摄像机数据"""
+    try:
+        CameraDevice = kwargs['apps'].get_model('devices', 'CameraDevice')
+    except LookupError:
+        return
+
+    if not CameraDevice.objects.count():
+        # 无数据，需要导入
+        batch_data = list(get_export_data('camera', **{'belong_system': 'VMS', 'device_type': 'cctv'}))
+        single_create_data(CameraDevice, batch_data)
+
+
+def create_default_maintenance_data(**kwargs):
+    """创建默认围界设备数据"""
+    try:
+        MaintenanceDevice = kwargs['apps'].get_model('devices', 'MaintenanceDevice')
+        DeviceInfo = kwargs['apps'].get_model('devices', 'DeviceInfo')
+    except LookupError:
+        return
+
+    if not MaintenanceDevice.objects.count():
+        # 无数据，需要导入
+        batch_data = list(get_export_data('maintenance', **{'belong_system': 'AIS', 'device_type': 'enclosure'}))
+
+        for data in batch_data:
+            if not pd.isnull(data['parent']):
+                data['parent'] = DeviceInfo.objects.get(device_code=data['parent'])
+            else:
+                data.pop('parent')
+
+            if pd.isnull(data['related_camera_code']):
+                data.pop('related_camera_code')
+
+            try:
+                MaintenanceDevice.objects.create(**data)
+            except Exception as e:
+                print(f'数据导入失败:{e}')
+                print(f'导入设备数据:{data}')
+
+
+def create_default_entrance_data(**kwargs):
+    """创建默认门禁设备"""
+    try:
+        EntranceDevice = kwargs['apps'].get_model('devices', 'EntranceDevice')
+    except LookupError:
+        return
+
+    if not EntranceDevice.objects.count():
+        # 无数据，需要导入
+        batch_data = list(get_export_data('entrance', **{'belong_system': 'ACS', 'device_type': 'access_control'}))
+        single_create_data(EntranceDevice, batch_data)
+
+
+def create_default_fire_data(**kwargs):
+    """创建默认消防设备数据"""
+    try:
+        FireDevice = kwargs['apps'].get_model('devices', 'FireDevice')
+    except LookupError:
+        return
+
+    if not FireDevice.objects.count():
+        # 无数据，需要导入
+        batch_data = list(get_export_data('fire', **{'belong_system': 'XFHZ', 'device_type': 'fire'}))
+        single_create_data(FireDevice, batch_data)
+
+
+def create_default_conceal_data(**kwargs):
+    """创建默认隐蔽报警设备数据"""
+    try:
+        ConcealAlarmDevice = kwargs['apps'].get_model('devices', 'ConcealAlarmDevice')
+    except LookupError:
+        return
+
+    if not ConcealAlarmDevice.objects.count():
+        # 无数据，需要导入
+        batch_data = list(get_export_data('conceal_alarm', **{'belong_system': 'YBBJ', 'device_type': 'alarm'}))
+        single_create_data(ConcealAlarmDevice, batch_data)
+
+
+def create_default_passage_way_data(**kwargs):
+    """创建默认道口设备数据"""
+    try:
+        PassageWayDevice = kwargs['apps'].get_model('devices', 'PassageWayDevice')
+    except LookupError:
+        return
+
+    if not PassageWayDevice.objects.count():
+        # 无数据，需要导入
+        batch_data = list(get_export_data('passage_way', **{'belong_system': 'CMS', 'device_type': 'passage_way'}))
+        single_create_data(PassageWayDevice, batch_data)
+
+
+class DevicesConfig(AppConfig):
+    name = 'devices'
+    verbose_name = '设备管理'
+
+    def ready(self):
+        # post_migrate.connect(create_default_camera_data, sender=self)
+        post_migrate.connect(create_default_test_camera_data, sender=self)
+        post_migrate.connect(create_default_maintenance_data, sender=self)
+        post_migrate.connect(create_default_entrance_data, sender=self)
+        post_migrate.connect(create_default_fire_data, sender=self)
+        post_migrate.connect(create_default_conceal_data, sender=self)
+        post_migrate.connect(create_default_passage_way_data, sender=self)

@@ -1,0 +1,15 @@
+from security_platform.utils.views import CustomGenericAPIView
+
+
+class VersionView(CustomGenericAPIView):
+    """查询版本号
+
+    需要跟rpm包的版本号一致
+    """
+    authentication_classes = ()
+    permission_classes = ()
+    versioning_class = None
+
+    def get(self, _):
+        """获取版本号"""
+        return self.success_response(data={'version': '2.2.1'})

@@ -1,0 +1,139 @@
+"""MQ订阅主题消息回调类
+
+回调类定义时通过元类自动注册相关信息，并加入列表registry_list
+"""
+from collections import namedtuple
+
+from redis import RedisError
+from django_redis import get_redis_connection
+from django_redis.exceptions import ConnectionInterrupted, CompressorError
+
+from security_platform import receive_logger as logger
+
+from utils import topic, constants
+from core import worker
+from core.generics import queue_manager
+
+
+Queue = queue_manager.Queue
+registry_list = []
+Registry = namedtuple('Registry', ['topic', 'class_name', 'queue', 'process_count', 'worker'])
+redis_conn = get_redis_connection()
+
+
+class RegisterMeta(type):
+    """回调类元类
+
+    将回调类的相关信息生成一个具名元组 Registry
+    """
+
+    def __new__(mcs, name, bases, class_dict):
+        """回调类创建前注册信息"""
+        mcs.registry_class(name, class_dict)
+        return super().__new__(mcs, name, bases, class_dict)
+
+    @staticmethod
+    def registry_class(class_name, class_dict):
+        """将回调类的具名元组信息添加到全局注册列表
+
+        Args:
+            class_name: 回调类的字符串名称
+            class_dict: 回调类的属性字典
+        """
+        sub_topic = class_dict['topic']
+
+        if sub_topic:
+            registry_list.append(Registry(
+                sub_topic, class_name, class_dict.get('queue'),
+                class_dict.get('process_count'), class_dict.get('worker')
+            ))
+
+
+class RegisterAbstractMessageCallback(metaclass=RegisterMeta):
+    """抽象MQ消息回调类
+
+    Class Attributes:
+        topic: 回调类关联的主题列表
+    """
+
+    topic = []
+
+    @classmethod
+    def on_message(cls, *args):
+        """消息回调时调用的函数"""
+        raise NotImplementedError('on_message must be Implemented')
+
+
+class ClientCheckMessageCallback(RegisterAbstractMessageCallback):
+    """MQ接收消息服务心跳检测回调
+
+    Class Attributes:
+        topic: 回调类关联的主题列表  [smp/mq_check]
+    """
+
+    topic = [topic.RECEIVE_SERVER_CHECK_TOPIC]
+
+    @classmethod
+    def on_message(cls, *args):
+        """接收来自定时任务的消息并写入redis"""
+        *_, msg = args
+        content = msg.payload.decode()
+
+        try:
+            redis_conn.set(content, content, nx=True, ex=constants.SERVER_CHECK_REDIS_EXPIRES)
+        except (ConnectionInterrupted, CompressorError, RedisError):
+            logger.info('redis连接失败', exc_info=False)
+
+
+class MultiprocessMessageCallback(RegisterAbstractMessageCallback):
+    """多进程消息回调
+
+    通过on_message方法将对应的消息扔到队列交给worker处理
+
+    Class Attributes:
+        topic: 回调类关联的主题列表
+        worker: 处理消息的类，worker从队列中取消息进行处理
+        queue: 进程消息队列，收到的消息仍到该队列中
+        process_count: 开启处理消息的进程个数，当消息数量较多时可增大进程数，增加处理能力
+    """
+
+    topic = []
+    worker = None
+    queue = None
+    process_count = 0
+
+    @classmethod
+    def on_message(cls, *args):
+        """拿到消息后，将消息放到进程消息队列"""
+        *_, msg = args
+        try:
+            # 拿不到消息会一直阻塞
+            cls.queue.put((msg.topic, msg.payload.decode()))
+        except (BrokenPipeError, ConnectionRefusedError):
+            logger.error('进程队列通信异常', exc_info=False)
+
+
+class FlightMessageCallback(MultiprocessMessageCallback):
+    """航班系统消息回调"""
+
+    topic = [topic.IIS_SUBSCRIBE_TOPIC]
+    worker = worker.IISWork
+    queue = Queue(100)
+    process_count = 1
+
+
+class CommonMessageMaintenanceCallback(MultiprocessMessageCallback):
+    """门禁/道口/消防/防隐蔽报警/围界消息回调"""
+
+    topic = [
+        topic.VMS_SUBSCRIBE_TOPIC,
+        topic.CMS_SUBSCRIBE_TOPIC,
+        topic.ACS_SUBSCRIBE_TOPIC,
+        topic.YBBJ_SUBSCRIBE_TOPIC,
+        topic.AIS_SUBSCRIBE_TOPIC,
+        topic.XFHZ_SUBSCRIBE_TOPIC,
+        topic.ZVAMS_SUBSCRIBE_TOPIC
+    ]
+    worker = worker.CommonWork
+    queue = Queue(100)
+    process_count = 1

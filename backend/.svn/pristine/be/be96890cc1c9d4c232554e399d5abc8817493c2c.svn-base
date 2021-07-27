@@ -1,0 +1,221 @@
+"""航班事件相关业务逻辑处理
+
+FlightLabelResource 航班事件处理
+AirlinesLabelResource 航空公司事件处理
+FlightErrorLabelResource 航班异常信息事件
+AirportLabelResource 航班公司信息事件
+"""
+from situations import models
+from utils import CommonLabelResource, time_format_conversion, logger
+
+
+class FlightLabelResource(CommonLabelResource):
+    """航班事件处理
+
+    Class Attributes:
+        model_class: 航班数据模型类
+    """
+
+    model_class = models.FlightInfo
+
+    def set_flight_number_share(self):
+        """获取共享航班"""
+        flight_share_label = self.label.get('SFLG')
+
+        if flight_share_label is not None:
+            if isinstance(flight_share_label['SFLT'], list):
+                flight_number_share = ','.join(i['SFNO'] for i in flight_share_label['SFLT'])
+            else:
+                flight_number_share = flight_share_label['SFLT']['SFNO']
+
+            self._label_info['flight_number_share'] = flight_number_share
+
+    def set_flight_gate(self):
+        """获取登机门信息"""
+        flight_gate_label = self.label.get('GTLS')
+
+        if flight_gate_label is not None:
+            if isinstance(flight_gate_label['GATE'], list):
+                gate_info = ','.join(i['ID'] for i in flight_gate_label['GATE'])
+            else:
+                gate_info = flight_gate_label['GATE']['GTNO']
+
+            self._label_info['boarding_gate'] = gate_info
+
+    def set_baggage_turntable(self):
+        """获取行李转盘信息"""
+        baggage_turntable_label = self.label.get('BLLS')
+
+        if baggage_turntable_label is not None:
+            if isinstance(baggage_turntable_label['BELT'], list):
+                baggage_turntable = ','.join(i['ID'] for i in baggage_turntable_label['BELT'])
+            else:
+                baggage_turntable = baggage_turntable_label['BELT']['ID']
+
+            self._label_info['baggage_turntable'] = baggage_turntable
+
+    def set_flight_routes(self):
+        """获取航线信息"""
+        flight_routes_label = self.label.get('AIRL')
+
+        if flight_routes_label is not None:
+            terminal_label = flight_routes_label['ARPT']
+            # 起飞航站
+            self._label_info['takeoff_iata'] = terminal_label[0]['APCD']
+            # 目的航站
+            self._label_info['destination_iata'] = terminal_label[-1]['APCD']
+            # 经停站信息
+            self._label_info['stopover_iata'] = ','.join(i['APCD'] for i in terminal_label[1:-1])
+            # 计划起飞
+            self._label_info['plan_takeoff'] = time_format_conversion(terminal_label[0]['FPTT'])
+            # 计划到达
+            self._label_info['plan_arrival'] = time_format_conversion(terminal_label[-1]['FPLT'])
+            # 预计起飞
+            self._label_info['estimate_takeoff'] = time_format_conversion(terminal_label[0]['FETT'])
+            # 预计到达
+            self._label_info['estimate_arrival'] = time_format_conversion(terminal_label[-1]['FELT'])
+            # 实际起飞
+            self._label_info['actual_takeoff'] = time_format_conversion(terminal_label[0]['FRTT'])
+            # 实际到达
+            self._label_info['actual_arrive'] = time_format_conversion(terminal_label[-1]['FRLT'])
+        else:
+            # 计划起飞
+            self._label_info['plan_takeoff'] = time_format_conversion(self.label.get('FPTT'))
+            # 计划到达
+            self._label_info['plan_arrival'] = time_format_conversion(self.label.get('FPLT'))
+            # 预计起飞
+            self._label_info['estimate_takeoff'] = time_format_conversion(self.label.get('FETT'))
+            # 预计到达
+            self._label_info['estimate_arrival'] = time_format_conversion(self.label.get('FELT'))
+            # 实际起飞
+            self._label_info['actual_takeoff'] = time_format_conversion(self.label.get('FRTT'))
+            # 实际到达
+            self._label_info['actual_arrive'] = time_format_conversion(self.label.get('FRLT'))
+
+    def set_terminal(self):
+        """获取航站楼信息"""
+        terminal_label = self.label.get('TMCD')
+        if terminal_label is not None:
+            self._label_info['terminal_info'] = terminal_label['NMCD']
+            self._label_info['inter_terminal_info'] = terminal_label['JMCD']
+
+    def set_basic_info(self):
+        """航班基础信息"""
+        # 航班唯一标示
+        self._label_info['fl_id'] = self.label['FLID']
+        # 关联航班
+        self._label_info['af_id'] = self.label.get('AFID')
+        # 航空公司标示
+        self._label_info['company'] = self.label.get('AWCD') or self.label.get('NAWC')
+        # 航班执行时间
+        self._label_info['execution_date'] = self.label.get('FEXD')
+        # 航班号
+        self._label_info['flight_number'] = self.label.get('FLNO') or self.label.get('NFLN')
+        # 进出港标志
+        self._label_info['arrival_departure_flag'] = self.label.get('FLIO')
+        # 航班属性
+        self._label_info['flight_property'] = self.label.get('FATT')
+        # 航班进展状态
+        self._label_info['flight_state'] = self.label.get('STAT')
+        # 机型
+        self._label_info['flight_type'] = self.label.get('CFTP')
+        # 航班异常状态
+        self._label_info['exception_status'] = self.label.get('ABST')
+        # 异常原因父类
+        self._label_info['exception_reason_father'] = self.label.get('ABRS')
+        # 异常原因子类
+        self._label_info['exception_reason_son'] = self.label.get('IARS')
+        # vip人数
+        self._label_info['vip_count'] = self.label.get('VIP', 0)
+
+    def set_label_info(self):
+        """获取航班信息"""
+        # 基础信息
+        self.set_basic_info()
+        # 行李转盘
+        self.set_baggage_turntable()
+        # 登机门信息
+        self.set_flight_gate()
+        # 共享航班号
+        self.set_flight_number_share()
+        # 航线信息
+        self.set_flight_routes()
+        # 航站楼
+        self.set_terminal()
+
+        logger.info(self._label_info)
+
+    def get_object_kwargs(self):
+        """查询航班信息过滤数据字典"""
+        return {'fl_id': self._label_info['fl_id']}
+
+
+class AirlinesLabelResource(CommonLabelResource):
+    """航空公司事件处理
+
+    Class Attributes:
+        model_class: 航空公司数据模型类
+    """
+
+    model_class = models.FlightCompany
+
+    def set_label_info(self):
+        """航空公司数据标签，不存在的字典用None来表示"""
+        self._label_info['second_code'] = self.label['CODE']
+        self._label_info['three_code'] = self.label.get('TRCD')
+        self._label_info['property'] = self.label.get('ALTA')
+        self._label_info['ch_description'] = self.label.get('CNNM')
+        self._label_info['inter_description'] = self.label.get('ENNM')
+        self._label_info['country_code'] = self.label.get('CTRY')
+        self._label_info['terminal'] = self.label.get('TMLC')
+        self._label_info['company_group'] = self.label.get('GRUP')
+        logger.info(self._label_info)
+
+    def get_object_kwargs(self):
+        """查询航空公司过滤数据字典"""
+        return {'second_code': self._label_info['second_code']}
+
+
+class FlightErrorLabelResource(CommonLabelResource):
+    """航班异常原因"""
+
+    model_class = models.FlightException
+
+    def set_label_info(self):
+        """航班异常原因数据标签，不存在的字典用None来表示"""
+        self._label_info['errcode'] = self.label['CODE']
+        self._label_info['ch_description'] = self.label.get('CNNM')
+        self._label_info['inter_description'] = self.label.get('ENNM')
+        self._label_info['errcode_belong'] = self.label.get('SPCD')
+        self._label_info['is_type'] = self.label.get('ISSP')
+        self._label_info['errcode_type'] = self.label.get('ARTY')
+        logger.info(self._label_info)
+
+    def get_object_kwargs(self):
+        """查询航班异常原因过滤数据字典"""
+        return {'errcode': self._label_info['errcode']}
+
+
+class AirportLabelResource(CommonLabelResource):
+    """机场信息"""
+
+    model_class = models.Airport
+
+    def set_label_info(self):
+        """机场信息数据标签，不存在的字典用None来表示"""
+        self._label_info['three_code'] = self.label['CODE']
+        self._label_info['four_code'] = self.label.get('FRCD')
+        self._label_info['property'] = self.label.get('APAT')
+        self._label_info['ch_description'] = self.label.get('CNNM')
+        self._label_info['inter_description'] = self.label.get('ENNM')
+        self._label_info['is_open'] = self.label.get('AISO')
+        self._label_info['alias'] = self.label.get('APSN')
+        self._label_info['country_code'] = self.label.get('CTRY')
+        self._label_info['city_code'] = self.label.get('ACTY')
+        self._label_info['lat'] = self.label.get('LAT')
+        self._label_info['lon'] = self.label.get('LON')
+        logger.info(self._label_info)
+
+    def get_object_kwargs(self):
+        """查询机场信息过滤数据字典"""
+        return {'three_code': self._label_info['three_code']}

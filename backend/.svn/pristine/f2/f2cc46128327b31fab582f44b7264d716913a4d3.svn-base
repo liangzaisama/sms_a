@@ -1,0 +1,100 @@
+#!/bin/bash
+
+version=2.6.0
+
+# rpm包路径名称
+rpm_paths="/home/OPS/VAS-${version}-1.x86_64.rpm"
+
+time=$(date "+%Y-%m-%d_%H:%M:%S")
+bak_paths="/home/OPS/vas_compile_bak_${version}_${time}"
+echo ${rpm_paths}
+echo ${bak_paths}
+
+function copy_old_code {
+  mv /home/OPS/vas_compile ${bak_paths}
+  echo '重命名vas_compile完成'
+
+}
+
+function update_code {
+  rpm -ivhF ${rpm_paths}
+  echo '更新代码完成'
+
+}
+
+function copy_old_config {
+  \cp -f "${bak_paths}/security/config.ini" /home/OPS/vas_compile/security/config.ini
+  \cp -f "${bak_paths}/security/manage.pyc" /home/OPS/vas_compile/security/manage.pyc
+  
+  echo '复制配置文件完成'
+}
+
+function copy_old_migration {
+  # 删除新的迁移文件
+  rm -rf /home/OPS/vas_compile/security/security/apps/licenses/migrations
+  rm -rf /home/OPS/vas_compile/security/security/apps/nodes/migrations
+  rm -rf /home/OPS/vas_compile/security/security/apps/operations/migrations
+  rm -rf /home/OPS/vas_compile/security/security/apps/person_db/migrations
+  rm -rf /home/OPS/vas_compile/security/security/apps/tasks/migrations
+  rm -rf /home/OPS/vas_compile/security/security/apps/user/migrations
+  rm -rf /home/OPS/vas_compile/security/security/apps/verify/migrations
+
+  # 复制历史的迁移文件
+  cp -rf "${bak_paths}/security/security/apps/licenses/migrations" /home/OPS/vas_compile/security/security/apps/licenses/migrations
+  cp -rf "${bak_paths}/security/security/apps/nodes/migrations" /home/OPS/vas_compile/security/security/apps/nodes/migrations
+  cp -rf "${bak_paths}/security/security/apps/operations/migrations" /home/OPS/vas_compile/security/security/apps/operations/migrations
+  cp -rf "${bak_paths}/security/security/apps/person_db/migrations" /home/OPS/vas_compile/security/security/apps/person_db/migrations
+  cp -rf "${bak_paths}/security/security/apps/tasks/migrations" /home/OPS/vas_compile/security/security/apps/tasks/migrations
+  cp -rf "${bak_paths}/security/security/apps/user/migrations" /home/OPS/vas_compile/security/security/apps/user/migrations
+  cp -rf "${bak_paths}/security/security/apps/verify/migrations" /home/OPS/vas_compile/security/security/apps/verify/migrations
+
+  echo '替换迁移文件完成'
+
+}
+
+function migrate {
+  python /home/OPS/vas_compile/security/manage.pyc makemigrations
+  python /home/OPS/vas_compile/security/manage.pyc migrate
+}
+
+function source_virtualenv {
+  source /home/.virtualenvs/VAS/bin/activate
+
+}
+
+function restart_server {
+  systemctl restart vas_start
+
+}
+
+function move_old_file {
+  mkdir -p /home/OPS/bak
+  mkdir -p /home/OPS/rpm
+  mv ${bak_paths} /home/OPS/bak/
+  mv /home/OPS/VAS*.rpm /home/OPS/rpm/
+
+}
+
+function main {
+  # 拷贝历史代码
+  copy_old_code
+
+  # 更新代码
+  update_code
+
+  # 拷贝配置文件/迁移文件
+  copy_old_config
+  copy_old_migration
+
+  # 重新执行迁移
+  source_virtualenv
+  migrate
+
+  # 重启服务
+  restart_server
+
+  # 将文件归档
+  move_old_file
+}
+
+main

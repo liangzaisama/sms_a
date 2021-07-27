@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="ce7c8933-a884-4251-b679-755e0123c2fd" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/security_platform/config_old.ini" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/security_platform/security_platform/utils/middleware_old.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/security_platform/config.ini" beforeDir="false" afterPath="$PROJECT_DIR$/security_platform/config.ini" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/security_platform/security_platform/apps/devices/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/security_platform/security_platform/apps/devices/apps.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/security_platform/security_platform/apps/events/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/security_platform/security_platform/apps/events/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/security_platform/security_platform/apps/situations/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/security_platform/security_platform/apps/situations/apps.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/security_platform/security_platform/apps/users/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/security_platform/security_platform/apps/users/apps.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/security_platform/security_platform/settings/dev.py" beforeDir="false" afterPath="$PROJECT_DIR$/security_platform/security_platform/settings/dev.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ProjectId" id="1sEXMsxz7gmMvpQufUlS7yTMyzT" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="SvnConfiguration" cleanupOnStartRun="true">
+    <configuration>$USER_HOME$/.subversion</configuration>
+    <supportedVersion>125</supportedVersion>
+  </component>
+  <component name="SvnFileUrlMappingImpl">
+    <option name="myMappingRoots">
+      <list>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="$PROJECT_DIR$" />
+          <option name="myCopyRoot" value="$PROJECT_DIR$" />
+        </SvnCopyRootSimple>
+      </list>
+    </option>
+    <option name="myMoreRealMappingRoots">
+      <list>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="$PROJECT_DIR$" />
+          <option name="myCopyRoot" value="$PROJECT_DIR$" />
+        </SvnCopyRootSimple>
+      </list>
+    </option>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ce7c8933-a884-4251-b679-755e0123c2fd" name="Default Changelist" comment="" />
+      <created>1620438678062</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1620438678062</updated>
+      <workItem from="1620438681261" duration="313000" />
+      <workItem from="1622601101662" duration="1180000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="184" y="60" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1622602907846">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="184" y="60" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1440.900@0.0.1440.900" timestamp="1622602907846" />
+    <state x="184" y="79" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.25.1440.814@0.25.1440.814" timestamp="1620438961345" />
+    <state x="507" y="179" key="FileChooserDialogImpl" timestamp="1620438738664">
+      <screen x="0" y="25" width="1440" height="814" />
+    </state>
+    <state x="507" y="179" key="FileChooserDialogImpl/0.25.1440.814@0.25.1440.814" timestamp="1620438738664" />
+    <state x="144" y="81" key="MergeDialog" timestamp="1620438932092">
+      <screen x="0" y="25" width="1440" height="814" />
+    </state>
+    <state x="144" y="81" key="MergeDialog/0.25.1440.814@0.25.1440.814" timestamp="1620438932092" />
+    <state x="432" y="140" key="MultipleFileMergeDialog" timestamp="1620438932125">
+      <screen x="0" y="25" width="1440" height="814" />
+    </state>
+    <state x="432" y="140" key="MultipleFileMergeDialog/0.25.1440.814@0.25.1440.814" timestamp="1620438932125" />
+    <state x="229" y="56" key="SettingsEditor" timestamp="1620438747864">
+      <screen x="0" y="25" width="1440" height="814" />
+    </state>
+    <state x="229" y="56" key="SettingsEditor/0.25.1440.814@0.25.1440.814" timestamp="1620438747864" />
+    <state x="490" y="147" key="VCS.ChangeListViewerDialog" timestamp="1622601129315">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="490" y="147" key="VCS.ChangeListViewerDialog/0.0.1440.900@0.0.1440.900" timestamp="1622601129315" />
+    <state x="490" y="158" key="VCS.ChangeListViewerDialog/0.25.1440.814@0.25.1440.814" timestamp="1620438779358" />
+    <state x="533" y="269" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1620438785933">
+      <screen x="0" y="25" width="1440" height="814" />
+    </state>
+    <state x="533" y="269" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/0.25.1440.814@0.25.1440.814" timestamp="1620438785933" />
+    <state x="492" y="326" key="svn.passwordDialog" timestamp="1622601123894">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="492" y="326" key="svn.passwordDialog/0.0.1440.900@0.0.1440.900" timestamp="1622601123894" />
+    <state x="492" y="320" key="svn.passwordDialog/0.25.1440.814@0.25.1440.814" timestamp="1620438770332" />
+  </component>
+</project>

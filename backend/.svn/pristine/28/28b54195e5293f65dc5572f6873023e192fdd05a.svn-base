@@ -1,0 +1,239 @@
+"""
+用户模型类
+"""
+from collections import OrderedDict
+
+from django.db import models
+from django.contrib.auth.models import AbstractUser, UserManager
+from rest_framework_jwt.settings import api_settings
+
+from security_platform import TextChoices
+from security_platform.utils.models import BaseModel, FilterIsDeletedManager
+
+
+class Department(models.Model):
+    """部门表
+
+    与用户是一对多关系
+    与设备是多对多关系
+    部门功能权限是页面权限，由前端进行控制，后端不做任何处理
+    """
+
+    department_name = models.CharField('部门名称', max_length=20, unique=True)
+    page_permissions = models.TextField('页面权限', blank=True)
+
+    class Meta:
+        verbose_name = '部门'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_department'
+
+    @property
+    def device_ids(self):
+        """获取部分拥有设备权限id列表"""
+        return self.device_set.all().values_list('id', flat=True)
+
+    def __str__(self):
+        return self.department_name
+
+
+class FilterIsDeletedUserManager(FilterIsDeletedManager, UserManager):
+    """自定义Manager
+
+    让原生object可以排除掉逻辑删除的用户
+    """
+    pass
+
+
+class User(AbstractUser):
+    """用户表"""
+
+    class UserLevel(TextChoices):
+        """用户等级
+
+        用于在接口层面实现用户等级，数据库层面体现在用户多个字段上
+        超级管理员 = is_superuser True
+        部门领导 = is_leader True
+        部门员工 = is_leader False  is_superuser False
+        """
+        ADMIN = 'admin', '超级管理员'
+        LEADER = 'leader', '部门领导'
+        STAFF = 'staff', '部门员工'
+
+    department = models.ForeignKey(Department, verbose_name='部门', on_delete=models.PROTECT, null=True, blank=True)
+    # department_name = models.CharField('部门名称', max_length=20, blank=True)  # 冗余字段、为了前端页面方便展示
+    is_leader = models.BooleanField('部门领导', default=False)
+    mobile = models.CharField('电话', max_length=15, blank=True)
+    scenario = models.TextField('自定义场景值(前端传递)', blank=True)
+    staff_name = models.CharField('员工姓名', max_length=10, blank=True, db_index=True)
+    is_deleted = models.BooleanField('逻辑删除', default=False, db_index=True)
+
+    objects = FilterIsDeletedUserManager()
+    raw_objects = UserManager()
+
+    class Meta:
+        verbose_name = '用户'
+        verbose_name_plural = verbose_name
+        indexes = [
+            models.Index(fields=['is_leader', 'is_staff', 'is_superuser']),
+        ]
+
+    @property
+    def device_ids(self):
+        """获取部分拥有设备权限id列表"""
+        return self.device_set.all().values_list('id', flat=True)
+
+    @property
+    def generate_token(self):
+        """生成jwt token"""
+        return api_settings.JWT_ENCODE_HANDLER(api_settings.JWT_PAYLOAD_HANDLER(self))
+
+    def update_password(self, raw_password):
+        """更新密码"""
+        self.set_password(raw_password)
+        self.save(update_fields=["password"])
+
+    @classmethod
+    def get_field_value_by_level(cls, level):
+        """根据等级获取对应的模型类字段
+
+        Args:
+            level: 等级
+
+        Returns:
+            level_relation_filed: 等级关联的对应字段字典
+        """
+        level_relation_filed = OrderedDict()
+
+        if level == cls.UserLevel.ADMIN:
+            level_relation_filed['is_leader'] = False
+            level_relation_filed['is_staff'] = True
+            level_relation_filed['is_superuser'] = True
+        elif level == cls.UserLevel.LEADER:
+            level_relation_filed['is_leader'] = True
+            level_relation_filed['is_staff'] = False
+            level_relation_filed['is_superuser'] = False
+        elif level == cls.UserLevel.STAFF:
+            level_relation_filed['is_leader'] = False
+            level_relation_filed['is_staff'] = False
+            level_relation_filed['is_superuser'] = False
+
+        return level_relation_filed
+
+    @property
+    def level(self):
+        """获取当前用户等级"""
+        if self.is_superuser:
+            level = self.UserLevel.ADMIN
+        elif self.is_leader:
+            level = self.UserLevel.LEADER
+        else:
+            level = self.UserLevel.STAFF
+
+        return level
+
+    @level.setter
+    def level(self, value):
+        """设置用户等级
+
+        Args:
+           value: 用户等级
+        """
+        for filed, filed_value in self.get_field_value_by_level(value).items():
+            setattr(self, filed, filed_value)
+
+    def check_ip_address(self, request_ip):
+        if request_ip == '127.0.0.1':
+            # 本机ip 放行
+            return True
+
+        auth_ips = self.useripwhitelist_set.all().values_list('ip_address', flat=True)
+        if not auth_ips:
+            # 未设置授权ip, 放行
+            return True
+
+        if '0.0.0.0' in auth_ips:
+            # 所有ip放行
+            return True
+
+        split_request_ip = request_ip.split('.')
+        split_request_ip.pop()
+        str_ip_segment = ''.join(split_request_ip)
+
+        for auth_ip in auth_ips:
+            split_auth_ip = auth_ip.split('.')
+
+            if int(split_auth_ip[-1]) == 0:
+                # ip段 校验前三位是否一样
+                split_auth_ip.pop()
+                if ''.join(split_request_ip) == str_ip_segment:
+                    return True
+            else:
+                # ip地址 校验是否完全一致
+                if request_ip == auth_ip:
+                    return True
+
+        return False
+
+    def is_same_department(self, user):
+        """判断是否为相同部门"""
+        return self.department_id == user.department_id
+
+    def __str__(self):
+        return self.username
+
+
+class UserIPWhiteList(BaseModel):
+    """用户IP白名单"""
+
+    SINGLE_USER_MAX_COUNT = 10
+    user = models.ForeignKey(User, verbose_name="用户", null=True, blank=True, on_delete=models.CASCADE)
+    ip_address = models.CharField('授权ip地址', max_length=15)
+
+    class Meta:
+        verbose_name = '用户ip'
+        db_table = 'tb_user_ip_white_list'
+        verbose_name_plural = verbose_name
+        unique_together = ['user', 'ip_address']
+
+    def __str__(self):
+        return self.ip_address
+
+
+class UserDiary(BaseModel):
+    """用户日志"""
+
+    user = models.ForeignKey(User, verbose_name='用户', on_delete=models.CASCADE, related_name='diary')
+    job_content = models.CharField('工作内容', max_length=100)
+    job_time = models.DateTimeField('时间')
+    is_handover = models.BooleanField('是否交接', default=False)
+    handover_user = models.ForeignKey(User, verbose_name='交接用户', on_delete=models.CASCADE)
+    handover_content = models.CharField('交接内容', max_length=100)
+
+    class Meta:
+        verbose_name = '用户日志'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_user_diary'
+
+
+class UserBacklog(BaseModel):
+    """用户待办事项"""
+
+    class BacklogType(TextChoices):
+        """待办事件类型"""
+        handover = 'handover', '交接班'
+        device_work_order_confirm = 'work_order_confirm', '设备工单确认'
+        device_work_order_solve = 'work_order_solve', '设备工单处理'
+        device_work_order_audit = 'work_order_audit', '设备工单审核'
+        alarm_event_confirm = 'event_confirm', '报警事件确认'
+        alarm_event_solve = 'event_solve', '报警事件处理'
+        alarm_event_audit = 'event_audit', '报警事件审核'
+
+    object_id = models.IntegerField('待办事件对象id')
+    description = models.CharField('待办事件描述', max_length=50)
+    backlog_type = models.CharField('待办事件类型', choices=BacklogType.choices, max_length=20)
+
+    class Meta:
+        verbose_name = '用户待办事项'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_user_backlog'
+

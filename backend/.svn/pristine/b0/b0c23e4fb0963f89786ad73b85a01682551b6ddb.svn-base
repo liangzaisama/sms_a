@@ -1,0 +1,21 @@
+import xadmin
+
+from . import models
+
+
+class ResourceAdmin:
+    list_filter = ['resource_type']
+    list_display = ['id', 'name', 'resource_type', 'resource_type_sec']
+    ordering = ['id']
+
+
+class FlightInfoAdmin:
+    list_filter = ['arrival_departure_flag']
+    list_display = ['flight_number', 'plan_takeoff', 'estimate_takeoff']
+    ordering = ['id']
+
+
+xadmin.site.register(models.ResourceInfo, ResourceAdmin)
+xadmin.site.register(models.FlightInfo, FlightInfoAdmin)
+xadmin.site.register(models.PassageWayCarPassThrough)
+xadmin.site.register(models.FlightResource)

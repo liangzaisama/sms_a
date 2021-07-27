@@ -1,0 +1,204 @@
+"""子系统的设备相关消息业务逻辑处理
+
+GenericDeviceResource 通用的设备新增，设备删除，设备修改，设备状态变更业务处理
+各系统子类可重写对应的函数来重写或修改业务逻辑
+"""
+from devices import models
+from operations.models import EntranceAccessRecords
+from exceptions import InvalidFiledError
+from security_platform.utils.commen import blank_get
+from utils import CreateUpdateDeleteLabelResource, time_format_conversion, CreateLabelResource
+
+
+class GenericDeviceResource(CreateUpdateDeleteLabelResource):
+    """设备事件处理
+
+    Class Attributes:
+        model_class: 设备对应的模型类对象，用于数据库对象操作
+        device_type: 设备所属设备类型，根据设备类型的枚举类定义，用于获取设备类型字段
+        system_code: 设备所属系统编码，根据系统编码的枚举类定义，用于获取设备系统类型字段
+    """
+
+    model_class = models.DeviceInfo
+    device_type = None
+    system_code = None
+
+    @property
+    def source(self):
+        """获取action对应的标签数据解析函数字典"""
+        return {
+            'delete': self.delete_label_info,
+            'state': self.state_label_info
+        }
+
+    def state_validate(self):
+        """设备状态变更时，进行设备状态校验
+
+        Returns:
+            device: 设备模型类对象
+
+        Raises:
+            InvalidFiledError: 校验失败时抛出该异常
+        """
+        try:
+            device = self.model_class.objects.only('id').get(device_code=self.label['device_code'], is_deleted=False)
+        except self.model_class.DoesNotExist:
+            raise InvalidFiledError('设备不存在')
+
+        if any([
+            self.label['device_state'] not in [device.DeviceState.NORMAL, device.DeviceState.TROUBLE_OPEN],
+
+            # 设备状态正常，转变状态不是故障
+            (device.device_state == device.DeviceState.NORMAL and self.label[
+                'device_state'] != device.DeviceState.TROUBLE_OPEN),
+
+            # 设备状态故障，转变状态不是正常
+            (device.device_state == device.DeviceState.TROUBLE_OPEN and self.label[
+                'device_state'] != device.DeviceState.NORMAL),
+
+            # 设备状态故障恢复，转变状态不是故障
+            (device.device_state == device.DeviceState.TROUBLE_OFF and self.label[
+                'device_state'] != device.DeviceState.TROUBLE_OPEN),
+        ]):
+            raise InvalidFiledError('无效的设备状态-当前设备状态:{0}-传递设备状态:{1}'.format(
+                device.device_state, self.label['device_state']))
+
+        if self.label['device_state'] == device.DeviceState.NORMAL:
+            self.label['device_state'] = device.DeviceState.TROUBLE_OFF
+
+    def state_label_info(self):
+        """设备状态变更，数据标签设置"""
+        self.state_validate()
+
+        self._label_info['device_code'] = self.label['device_code']
+        self._label_info['device_state'] = self.label['device_state']
+
+        if self.label['device_state'] == self.model_class.DeviceState.TROUBLE_OPEN:
+            # 故障
+            self._label_info['trouble_code'] = self.label['error_code']
+            self._label_info['trouble_message'] = self.label['error_message']
+
+    def delete_label_info(self):
+        """删除设备，数据标签设置"""
+        self._label_info['device_code'] = self.label['device_code']
+
+    def delete(self):
+        """删除设备, 逻辑删除"""
+        ret = self.model_class.objects.filter(**self.get_object_kwargs()).update(is_deleted=True)
+        print(ret)
+
+    def set_label_info(self):
+        """默认的数据标签设置 增加，修改设备
+
+        设备新增和设备更新走此函数
+        """
+        self._label_info['device_name'] = self.label['device_name']
+        self._label_info['device_code'] = self.label['device_code']
+        self._label_info['device_type_id'] = blank_get(self.label, 'device_type_id')
+        self._label_info['device_type_name'] = blank_get(self.label, 'device_type_name')
+        self._label_info['ipv4'] = blank_get(self.label, 'ip')
+        self._label_info['port'] = blank_get(self.label, 'port')
+        self._label_info['switches'] = blank_get(self.label, 'switches')
+        self._label_info['area_code'] = blank_get(self.label, 'area_code')
+        self._label_info['floor_code'] = blank_get(self.label, 'floor_code')
+        self._label_info['manufacturer'] = blank_get(self.label, 'manufacturer_code')
+        self._label_info['device_model'] = blank_get(self.label, 'device_model')
+        self._label_info['related_camera_code'] = blank_get(self.label, 'related_camera_code')
+
+        # 可能不需要的字段
+        self._label_info['device_type_id_son'] = blank_get(self.label, 'device_type_id_son')
+        self._label_info['device_cad_code'] = blank_get(self.label, 'device_cad_code')
+
+        # 非业务字段
+        self._label_info['device_type'] = self.device_type
+        self._label_info['belong_system'] = self.system_code
+
+    def get_object_kwargs(self):
+        """查询设备数据时的过滤条件"""
+        return {'device_code': self._label_info['device_code'], 'is_deleted': False}
+
+
+class CameraDeviceResource(GenericDeviceResource):
+    """摄像机设备事件"""
+
+    model_class = models.CameraDevice
+    device_type = model_class.DeviceType.CAMERA
+    system_code = model_class.BelongSystem.CAMERA
+
+    def set_label_info(self):
+        """默认的数据标签设置
+
+        设备新增和设备更新时添加额外字段
+        """
+        super().set_label_info()
+        self._label_info['is_ptz'] = self.label['ptz'] == 'Yes'
+        self._label_info['flow_address'] = self.label['rtsp']
+
+
+class MaintenanceDeviceResource(GenericDeviceResource):
+    """围界设备事件处理"""
+
+    model_class = models.MaintenanceDevice
+    device_type = model_class.DeviceType.MAINTENANCE
+    system_code = model_class.BelongSystem.MAINTENANCE
+
+
+class EntranceDeviceResource(GenericDeviceResource):
+    """门禁设备事件处理"""
+
+    model_class = models.EntranceDevice
+    device_type = model_class.DeviceType.ENTRANCE
+    system_code = model_class.BelongSystem.ENTRANCE
+
+
+class FireDeviceResource(GenericDeviceResource):
+    """消防设备事件处理"""
+
+    model_class = models.FireDevice
+    device_type = model_class.DeviceType.FIRE
+    system_code = model_class.BelongSystem.FIRE
+
+
+class ConcealDeviceResource(GenericDeviceResource):
+    """隐蔽报警设备事件处理"""
+
+    model_class = models.ConcealAlarmDevice
+    device_type = model_class.DeviceType.CONCEAL
+    system_code = model_class.BelongSystem.CONCEAL
+
+
+class PassageWayDeviceResource(GenericDeviceResource):
+    """道口设备事件处理"""
+
+    model_class = models.PassageWayDevice
+    device_type = model_class.DeviceType.PASSAGE
+    system_code = model_class.BelongSystem.PASSAGE
+
+
+class EntranceSlotCardResource(CreateLabelResource):
+    """门禁设备刷卡记录"""
+
+    model_class = EntranceAccessRecords
+
+    def validate(self):
+        """参数校验"""
+        try:
+            in_out = int(self.label['in_out'])
+        except (TypeError, ValueError):
+            raise InvalidFiledError(f'进出方向字段类型错误:{self.label["in_out"]}')
+
+        if not EntranceAccessRecords.InOutChoice.check_value(in_out):
+            raise InvalidFiledError(f'进出方向字段取值错误:{self.label["in_out"]}')
+
+    def set_label_info(self):
+        """设置标签值"""
+        self._label_info['entrance_punch_code'] = self.label['entrance_punch_code']
+        self._label_info['device_code'] = self.label['device_code']
+        self._label_info['record_time'] = time_format_conversion(self.label['record_time'])
+        self._label_info['card_no'] = self.label['card_no']
+        self._label_info['holder'] = self.label['holder']
+        self._label_info['department'] = blank_get(self.label, 'department')
+        self._label_info['code_name'] = blank_get(self.label, 'code_name')
+        self._label_info['jobs'] = blank_get(self.label, 'jobs')
+        self._label_info['in_out'] = self.label['in_out']
+        self._label_info['region_id'] = self.label['region_id']

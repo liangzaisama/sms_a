@@ -1,0 +1,38 @@
+import datetime
+from redis import RedisError
+
+from utils.exceptions import StorageMsgMetricsError
+
+from security_platform import cache_redis_conn
+
+
+class MetricsStorage:
+
+    def storage(self, collected_name):
+        raise NotImplementedError('method storage() must be Implemented.')
+
+
+class RedisMetricsStorage(MetricsStorage):
+
+    EXPIRE_TIME = 60 * 60 * 24
+    metrics_key_name = 'system_metrics_{date}'
+
+    @property
+    def current_date(self):
+        if not hasattr(self, '_current_date'):
+            self._current_date = datetime.datetime.now().date()
+
+        return self._current_date
+
+    def storage(self, collected_name):
+        key_name = self.metrics_key_name.format(date=self.current_date)
+        try:
+            # 增加调用次数
+            cache_redis_conn.hincrby(key_name, collected_name)
+
+            # 增加数据有效期
+            if cache_redis_conn.ttl(key_name) == -1:
+                # 当 key不存在时，返回 -2:key不存在, -1: 没有设置剩余生存时间, 否则: 以秒为单位
+                cache_redis_conn.expire(key_name, self.EXPIRE_TIME)
+        except RedisError as exc:
+            raise StorageMsgMetricsError(exc)

@@ -1,0 +1,33 @@
+import xadmin
+
+from . import models
+
+
+class ResourceAdmin:
+    list_filter = ['resource_type']
+    list_display = ['id', 'name', 'resource_type', 'resource_type_sec']
+    ordering = ['id']
+
+
+class PeopleCountingRecordAdmin:
+    list_display = ['resource', 'statistical_time', 'total_people']
+    ordering = ['id', 'statistical_time']
+
+
+class FlightInfoAdmin:
+    list_filter = ['arrival_departure_flag']
+    list_display = ['flight_number', 'plan_takeoff', 'estimate_takeoff']
+    ordering = ['id']
+
+
+xadmin.site.register(models.ResourceInfo, ResourceAdmin)
+xadmin.site.register(models.PeopleCountingRecord, PeopleCountingRecordAdmin)
+xadmin.site.register(models.FlightInfo, FlightInfoAdmin)
+xadmin.site.register(models.PassageWayCarPassThrough)
+xadmin.site.register(models.FlightResource)
+# xadmin.site.register(models.CheckInCounter, ResourceAdmin)
+# xadmin.site.register(models.SecurityCheckpoint, ResourceAdmin)
+# xadmin.site.register(models.BoardingGate, ResourceAdmin)
+# xadmin.site.register(models.ReverseChannel, ResourceAdmin)
+# xadmin.site.register(models.BaggageTurntable, ResourceAdmin)
+# xadmin.site.register(models.Placement, ResourceAdmin)

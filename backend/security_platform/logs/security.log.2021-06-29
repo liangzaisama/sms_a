@@ -1,0 +1,824 @@
+2021-06-10 14:29:29,755 runserver.py[line:141] INFO HTTP GET /api/work/sheet 200 [53.95, 192.168.20.78:52603]
+2021-06-10 14:29:59,329 runserver.py[line:141] INFO HTTP GET /api/work/sheet 200 [0.08, 192.168.20.78:52631]
+2021-06-10 14:31:03,233 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/settings/prod.py changed, reloading.
+2021-06-10 14:31:05,736 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-10 14:37:33,475 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/settings/prod.py changed, reloading.
+2021-06-10 14:37:46,384 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-10 14:38:15,841 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-10 14:38:33,598 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/manage.py changed, reloading.
+2021-06-10 14:38:35,640 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-11 11:26:44,553 log.py[line:222] WARNING Not Found: /
+2021-06-11 11:26:56,277 runserver.py[line:149] WARNING HTTP GET / 404 [11.79, 127.0.0.1:59776]
+2021-06-11 11:26:57,135 log.py[line:222] WARNING Not Found: /favicon.ico
+2021-06-11 11:26:57,745 runserver.py[line:149] WARNING HTTP GET /favicon.ico 404 [0.61, 127.0.0.1:59794]
+2021-06-11 11:27:39,248 runserver.py[line:141] INFO HTTP GET /api/work/sheet 200 [24.64, 192.168.20.78:59822]
+2021-06-11 11:28:26,796 runserver.py[line:141] INFO HTTP GET /api/work/sheet 200 [1.62, 192.168.20.78:59902]
+2021-06-11 11:28:36,973 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-11 11:28:56,572 runserver.py[line:141] INFO HTTP GET /api/work/sheet 200 [12.13, 192.168.20.78:59933]
+2021-06-11 11:29:30,812 log.py[line:222] WARNING Not Found: /
+2021-06-11 11:29:30,814 runserver.py[line:149] WARNING HTTP GET / 404 [0.01, 127.0.0.1:59988]
+2021-06-16 14:21:10,058 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-17 11:40:47,038 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/models.py changed, reloading.
+2021-06-17 14:10:24,544 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:20:05,629 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:21:04,560 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:22:17,671 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:22:40,684 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:23:26,354 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:26:21,585 runserver.py[line:160] INFO WebSocket DISCONNECT / [127.0.0.1:50797]
+2021-06-22 10:27:03,564 runserver.py[line:160] INFO WebSocket DISCONNECT / [127.0.0.1:50802]
+2021-06-22 10:27:09,582 runserver.py[line:160] INFO WebSocket DISCONNECT / [127.0.0.1:50803]
+2021-06-22 10:27:24,581 runserver.py[line:160] INFO WebSocket DISCONNECT /event [127.0.0.1:50808]
+2021-06-22 10:35:21,035 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/density_alarm [192.168.20.84:51003]
+2021-06-22 10:35:21,682 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/density_alarm [192.168.20.84:51003]
+2021-06-22 10:36:08,890 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:51016]
+2021-06-22 10:36:09,876 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:51016]
+2021-06-22 10:36:21,873 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:36:33,777 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:51032]
+2021-06-22 10:36:34,627 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:51032]
+2021-06-22 10:37:32,759 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:51035]
+2021-06-22 10:37:32,859 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:51035]
+2021-06-22 10:37:46,567 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 10:37:51,474 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:51046]
+2021-06-22 10:37:52,291 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:51046]
+2021-06-22 11:20:31,183 log.py[line:222] ERROR Internal Server Error: /
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django_redis/util.py", line 32, in load_class
+    klass = getattr(mod, klass_name)
+AttributeError: module 'django_redis.client' has no attribute 'SentinelClient'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/handlers/exception.py", line 34, in inner
+    response = get_response(request)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/utils/deprecation.py", line 93, in __call__
+    response = self.process_request(request)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/contrib/sessions/middleware.py", line 20, in process_request
+    request.session = self.SessionStore(session_key)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/contrib/sessions/backends/cache.py", line 17, in __init__
+    self._cache = caches[settings.SESSION_CACHE_ALIAS]
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/cache/__init__.py", line 79, in __getitem__
+    cache = _create_cache(alias)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/cache/__init__.py", line 54, in _create_cache
+    return backend_cls(location, params)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django_redis/cache.py", line 51, in __init__
+    self._client_cls = load_class(self._client_cls)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django_redis/util.py", line 34, in load_class
+    raise ImproperlyConfigured('Module "{0}" does not define a "{1}" class'.format(mod_name, klass_name))
+django.core.exceptions.ImproperlyConfigured: Module "django_redis.client" does not define a "SentinelClient" class
+2021-06-22 11:20:31,191 runserver.py[line:154] ERROR HTTP GET / 500 [0.12, 127.0.0.1:51414]
+2021-06-22 11:20:31,395 log.py[line:222] ERROR Internal Server Error: /favicon.ico
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django_redis/util.py", line 32, in load_class
+    klass = getattr(mod, klass_name)
+AttributeError: module 'django_redis.client' has no attribute 'SentinelClient'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/handlers/exception.py", line 34, in inner
+    response = get_response(request)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/utils/deprecation.py", line 93, in __call__
+    response = self.process_request(request)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/contrib/sessions/middleware.py", line 20, in process_request
+    request.session = self.SessionStore(session_key)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/contrib/sessions/backends/cache.py", line 17, in __init__
+    self._cache = caches[settings.SESSION_CACHE_ALIAS]
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/cache/__init__.py", line 79, in __getitem__
+    cache = _create_cache(alias)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/cache/__init__.py", line 54, in _create_cache
+    return backend_cls(location, params)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django_redis/cache.py", line 51, in __init__
+    self._client_cls = load_class(self._client_cls)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django_redis/util.py", line 34, in load_class
+    raise ImproperlyConfigured('Module "{0}" does not define a "{1}" class'.format(mod_name, klass_name))
+django.core.exceptions.ImproperlyConfigured: Module "django_redis.client" does not define a "SentinelClient" class
+2021-06-22 11:20:31,398 runserver.py[line:154] ERROR HTTP GET /favicon.ico 500 [0.08, 127.0.0.1:51418]
+2021-06-22 11:29:42,125 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/settings/dev.py changed, reloading.
+2021-06-22 11:29:44,397 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:30:52,425 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:30:55,031 log.py[line:222] WARNING Not Found: /
+2021-06-22 11:30:55,033 runserver.py[line:149] WARNING HTTP GET / 404 [0.05, 127.0.0.1:51569]
+2021-06-22 11:31:07,156 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:51573]
+2021-06-22 11:31:10,211 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [192.168.20.84:51573]
+2021-06-22 11:31:27,638 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:31:34,767 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:51590]
+2021-06-22 11:31:37,535 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [192.168.20.84:51590]
+2021-06-22 11:35:52,869 runserver.py[line:160] INFO WebSocket DISCONNECT /event [127.0.0.1:51640]
+2021-06-22 11:36:03,447 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [127.0.0.1:51643]
+2021-06-22 11:36:08,597 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [127.0.0.1:51643]
+2021-06-22 11:42:25,187 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/chat/consumers.py changed, reloading.
+2021-06-22 11:42:27,400 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:50:43,875 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:53:05,646 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:54:54,516 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 11:55:27,805 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:02:47,298 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:10:22,936 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:10:39,662 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:15:09,653 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:17:18,883 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:17:40,172 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/routing.py changed, reloading.
+2021-06-22 12:17:42,183 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:18:01,299 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:50:03,737 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:50:58,427 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:51:11,772 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/routing.py changed, reloading.
+2021-06-22 12:51:16,709 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 12:51:26,808 runserver.py[line:141] INFO HTTP GET /api/contact 200 [0.37, 192.168.20.84:52639]
+2021-06-22 12:51:43,808 runserver.py[line:141] INFO HTTP GET /api/alarm/events 200 [1.30, 192.168.20.84:52649]
+2021-06-22 12:52:17,874 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/chat/consumers.py changed, reloading.
+2021-06-22 12:52:20,084 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 13:20:30,875 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [127.0.0.1:53006]
+2021-06-22 13:20:31,045 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [127.0.0.1:53006]
+2021-06-22 13:21:17,963 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [127.0.0.1:53010]
+2021-06-22 13:21:18,224 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [127.0.0.1:53010]
+2021-06-22 13:21:40,135 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [127.0.0.1:53011]
+2021-06-22 13:22:35,582 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [127.0.0.1:53011]
+2021-06-22 13:23:01,673 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53018]
+2021-06-22 13:23:07,108 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53018]
+2021-06-22 13:23:18,920 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53020]
+2021-06-22 13:23:21,066 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53020]
+2021-06-22 13:23:44,772 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 13:23:50,329 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53035]
+2021-06-22 13:23:55,942 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53035]
+2021-06-22 13:24:07,125 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53040]
+2021-06-22 13:24:08,895 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [192.168.20.84:53040]
+2021-06-22 13:26:00,522 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 13:26:11,913 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53066]
+2021-06-22 13:26:18,616 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53066]
+2021-06-22 13:26:56,062 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 13:27:03,495 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53080]
+2021-06-22 13:27:09,570 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53080]
+2021-06-22 13:28:25,477 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53115]
+2021-06-22 13:28:28,655 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [192.168.20.84:53115]
+2021-06-22 13:28:54,312 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53115]
+2021-06-22 13:29:09,360 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [192.168.20.84:53122]
+2021-06-22 13:29:09,367 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [192.168.20.84:53122]
+2021-06-22 13:29:13,166 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [192.168.20.84:53122]
+2021-06-22 13:30:09,621 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/event [127.0.0.1:53151]
+2021-06-22 13:30:09,629 runserver.py[line:158] INFO WebSocket CONNECT /ws/event [127.0.0.1:53151]
+2021-06-22 13:30:15,943 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/event [127.0.0.1:53151]
+2021-06-22 14:15:12,924 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 14:25:29,408 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-22 14:34:06,452 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/settings/dev.py changed, reloading.
+2021-06-22 14:34:08,724 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 10:23:42,154 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 13:22:28,569 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 13:29:01,477 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [192.168.20.84:62504]
+2021-06-24 13:29:01,543 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [192.168.20.84:62504]
+2021-06-24 13:32:47,854 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/__init__.py changed, reloading.
+2021-06-24 13:32:49,496 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 13:34:15,824 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/__init__.py changed, reloading.
+2021-06-24 13:34:19,023 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 13:42:33,017 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 14:18:33,927 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [192.168.20.84:63634]
+2021-06-24 14:18:33,989 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [192.168.20.84:63634]
+2021-06-24 14:22:21,251 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63677]
+2021-06-24 14:22:21,259 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63677]
+2021-06-24 14:22:21,391 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63677]
+2021-06-24 14:22:37,105 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63685]
+2021-06-24 14:22:37,113 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63685]
+2021-06-24 14:22:38,229 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63685]
+2021-06-24 14:24:25,154 a.py[line:225] ERROR [Errno 61] Connection refused
+2021-06-24 14:25:15,106 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-24 14:25:29,304 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63757]
+2021-06-24 14:25:29,336 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63757]
+2021-06-24 14:25:29,398 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63757]
+2021-06-24 14:25:45,753 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63766]
+2021-06-24 14:25:45,756 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63766]
+2021-06-24 14:25:45,819 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63766]
+2021-06-24 14:27:23,706 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63792]
+2021-06-24 14:27:23,709 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63792]
+2021-06-24 14:27:23,772 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63792]
+2021-06-25 10:47:37,739 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/models.py changed, reloading.
+2021-06-25 10:47:41,544 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 10:55:54,144 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/urls.py changed, reloading.
+2021-06-25 10:55:57,117 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 11:12:24,794 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-25 11:12:27,318 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 11:19:42,142 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 11:23:18,978 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-25 11:23:21,315 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:08:56,981 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-25 13:08:56,984 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [0.20, 192.168.20.84:50740]
+2021-06-25 13:11:00,351 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [11.43, 192.168.20.84:50775]
+2021-06-25 13:12:27,150 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [2.34, 192.168.20.84:50798]
+2021-06-25 13:35:57,104 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-25 13:35:59,591 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:46:00,515 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-25 13:46:02,896 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:46:16,166 log.py[line:222] WARNING Bad Request: /api/work/sheet/13/close
+2021-06-25 13:46:16,169 runserver.py[line:151] WARNING HTTP PUT /api/work/sheet/13/close 400 [0.15, 192.168.20.84:51211]
+2021-06-25 13:47:04,246 runserver.py[line:141] INFO HTTP PUT /api/work/sheet/13/close 200 [20.36, 192.168.20.84:51218]
+2021-06-25 13:47:24,252 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [4.41, 192.168.20.84:51234]
+2021-06-25 13:49:37,510 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-25 13:49:39,984 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:50:24,331 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-25 13:50:26,379 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:51:22,997 log.py[line:222] WARNING Bad Request: /api/work/sheet/14/audit
+2021-06-25 13:51:22,999 runserver.py[line:151] WARNING HTTP PUT /api/work/sheet/14/audit 400 [0.15, 192.168.20.84:51287]
+2021-06-25 13:52:19,579 log.py[line:222] WARNING Bad Request: /api/work/sheet/14/audit
+2021-06-25 13:52:19,584 runserver.py[line:151] WARNING HTTP PUT /api/work/sheet/14/audit 400 [37.21, 192.168.20.84:51293]
+2021-06-25 13:55:23,161 runserver.py[line:141] INFO HTTP PUT /api/work/sheet/14/audit 200 [29.78, 192.168.20.84:51327]
+2021-06-25 13:56:57,148 log.py[line:222] WARNING Bad Request: /api/work/sheet/14/audit
+2021-06-25 13:56:57,152 runserver.py[line:151] WARNING HTTP PUT /api/work/sheet/14/audit 400 [36.67, 192.168.20.84:51343]
+2021-06-25 13:58:15,649 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:58:37,840 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 13:58:50,547 log.py[line:222] WARNING Bad Request: /api/work/sheet/14/audit
+2021-06-25 13:58:50,549 runserver.py[line:151] WARNING HTTP PUT /api/work/sheet/14/audit 400 [9.73, 192.168.20.84:51395]
+2021-06-25 14:00:14,850 runserver.py[line:141] INFO HTTP PUT /api/work/sheet/14/audit 200 [9.24, 192.168.20.84:51414]
+2021-06-25 15:39:35,958 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-25 15:39:38,532 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 15:40:16,563 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-25 15:40:18,872 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 15:51:52,947 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-25 15:51:55,198 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 16:20:24,968 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-25 16:20:27,433 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-25 16:22:00,449 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-25 16:22:03,363 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-26 16:52:16,317 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:59734]
+2021-06-26 16:52:16,434 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:59734]
+2021-06-26 16:52:16,502 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:59734]
+2021-06-26 17:00:35,666 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:59953]
+2021-06-26 17:00:35,670 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:59953]
+2021-06-26 17:00:35,737 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:59953]
+2021-06-26 17:00:47,174 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:59961]
+2021-06-26 17:00:47,177 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:59961]
+2021-06-26 17:00:47,242 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:59961]
+2021-06-26 17:04:18,385 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60060]
+2021-06-26 17:04:18,388 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60060]
+2021-06-26 17:04:18,453 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60060]
+2021-06-26 17:04:51,768 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60070]
+2021-06-26 17:04:51,771 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60070]
+2021-06-26 17:04:51,847 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60070]
+2021-06-26 17:05:07,601 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60074]
+2021-06-26 17:05:07,603 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60074]
+2021-06-26 17:05:07,674 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60074]
+2021-06-26 17:05:20,776 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60078]
+2021-06-26 17:05:20,778 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60078]
+2021-06-26 17:05:20,853 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60078]
+2021-06-26 17:05:40,358 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60087]
+2021-06-26 17:05:40,361 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60087]
+2021-06-26 17:05:40,437 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60087]
+2021-06-26 17:05:48,178 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60091]
+2021-06-26 17:05:48,181 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60091]
+2021-06-26 17:05:48,249 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60091]
+2021-06-26 18:12:33,138 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60785]
+2021-06-26 18:12:33,143 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60785]
+2021-06-26 18:12:33,224 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60785]
+2021-06-26 18:13:02,225 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60792]
+2021-06-26 18:13:02,228 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60792]
+2021-06-26 18:13:02,293 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60792]
+2021-06-26 18:13:14,461 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:60797]
+2021-06-26 18:13:14,463 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:60797]
+2021-06-26 18:13:14,541 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:60797]
+2021-06-26 20:25:18,145 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63611]
+2021-06-26 20:25:18,150 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63611]
+2021-06-26 20:26:08,653 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63611]
+2021-06-26 20:26:33,516 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:63639]
+2021-06-26 20:26:33,518 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:63639]
+2021-06-26 20:27:24,649 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:63639]
+2021-06-28 09:11:26,660 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:54957]
+2021-06-28 09:11:26,673 runserver.py[line:158] INFO WebSocket CONNECT /ws/device_state [127.0.0.1:54957]
+2021-06-28 09:11:29,397 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:54957]
+2021-06-28 09:49:38,199 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-28 09:49:41,972 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 10:43:33,846 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-28 10:43:37,057 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 10:46:10,536 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-28 10:46:13,247 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 10:51:43,720 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-28 10:51:43,723 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [10.94, 192.168.20.84:57324]
+2021-06-28 10:51:52,393 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 10:56:07,689 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 10:57:27,717 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-28 10:57:27,719 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [73.68, 192.168.20.84:57718]
+2021-06-28 11:02:30,021 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:04:40,962 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:24:12,741 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-28 11:24:15,128 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:26:14,103 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-28 11:26:16,344 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:31:57,509 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-28 11:32:00,887 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:42:19,365 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:44:43,394 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-28 11:44:43,397 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [5.56, 192.168.20.84:61785]
+2021-06-28 11:45:13,218 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [5.84, 192.168.20.84:61822]
+2021-06-28 11:55:27,801 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-28 11:55:27,804 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [5.87, 192.168.20.84:62543]
+2021-06-28 11:56:17,887 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 11:56:47,776 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [6.28, 192.168.20.84:62654]
+2021-06-28 11:56:47,843 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/handlers/exception.py", line 34, in inner
+    response = get_response(request)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/core/handlers/base.py", line 106, in _get_response
+    response = middleware_method(request, callback, callback_args, callback_kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/utils/middleware.py", line 132, in process_view
+    response = callback(request, *callback_args, **callback_kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/views/decorators/csrf.py", line 54, in wrapped_view
+    return view_func(*args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/views/generic/base.py", line 71, in view
+    return self.dispatch(request, *args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 497, in dispatch
+    self.response = self.finalize_response(request, response, *args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 409, in finalize_response
+    assert isinstance(response, HttpResponseBase), (
+AssertionError: Expected a `Response`, `HttpResponse` or `HttpStreamingResponse` to be returned from the view, but received a `<class 'NoneType'>`
+2021-06-28 12:01:42,636 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-28 12:01:45,322 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:02:00,974 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [4.29, 192.168.20.84:63020]
+2021-06-28 12:02:22,116 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x1168c92b0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 693, in bulk_create
+    serializer.is_valid(raise_exception=True)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 745, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 623, in run_validation
+    value = self.to_internal_value(data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 662, in to_internal_value
+    validated = self.child.run_validation(item)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 437, in run_validation
+    value = self.validate(value)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 939, in validate
+    device_state = device_info.device_state
+AttributeError: 'NoneType' object has no attribute 'device_state'
+2021-06-28 12:02:22,161 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:02:22,163 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [4.18, 192.168.20.84:63047]
+2021-06-28 12:11:42,276 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:15:38,970 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:15:52,839 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x116bee0a0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 924, in create
+    validated_data=super(ListSerializer).validated_data
+AttributeError: 'super' object has no attribute 'validated_data'
+2021-06-28 12:15:52,925 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:15:52,927 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [5.87, 192.168.20.84:64111]
+2021-06-28 12:16:19,658 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:16:53,869 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x11813b9a0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 924, in create
+    validated_data=super().validated_data
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 280, in validated_data
+    raise AssertionError(msg)
+AssertionError: You must call `.is_valid()` before accessing `.validated_data`.
+2021-06-28 12:16:53,956 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:16:53,958 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [28.32, 192.168.20.84:64169]
+2021-06-28 12:17:13,520 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:18:40,074 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:19:24,516 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:21:15,219 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:21:26,950 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:21:34,991 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x114c4b040>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 692, in bulk_create
+    serializer = self.get_serializer(data=request.data, many=True)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/generics.py", line 112, in get_serializer
+    return serializer_class(*args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 124, in __new__
+    return cls.many_init(*args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 145, in many_init
+    child_serializer = cls(*args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 589, in __init__
+    assert self.child is not None, '`child` is a required argument.'
+AssertionError: `child` is a required argument.
+2021-06-28 12:21:35,063 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:21:35,065 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [2.21, 192.168.20.84:64614]
+2021-06-28 12:23:51,857 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-28 12:23:54,274 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:24:20,162 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-28 12:24:22,265 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:24:30,096 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x1148036a0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 871, in create
+    return self.create(validated_data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 871, in create
+    return self.create(validated_data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 871, in create
+    return self.create(validated_data)
+  [Previous line repeated 945 more times]
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 870, in create
+    def create(self, validated_data):
+RecursionError: maximum recursion depth exceeded while calling a Python object
+2021-06-28 12:24:30,158 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:24:30,160 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [3.03, 192.168.20.84:64840]
+2021-06-28 12:25:37,778 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:26:03,481 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x114d34b50>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 926, in create
+    validated_data=super().ListSerializer
+AttributeError: 'super' object has no attribute 'ListSerializer'
+2021-06-28 12:26:03,584 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:26:03,586 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [18.22, 192.168.20.84:64972]
+2021-06-28 12:26:37,100 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:26:45,623 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x116521b20>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 871, in create
+    return self.create(validated_data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 871, in create
+    return self.create(validated_data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 871, in create
+    return self.create(validated_data)
+  [Previous line repeated 945 more times]
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 870, in create
+    def create(self, validated_data):
+RecursionError: maximum recursion depth exceeded while calling a Python object
+2021-06-28 12:26:45,689 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:26:45,691 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [2.85, 192.168.20.84:65050]
+2021-06-28 12:29:37,107 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:30:01,457 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x1168767f0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 920, in create
+    validated_data = super(ListSerializer, self).validated_data
+TypeError: super(type, obj): obj must be an instance or subtype of type
+2021-06-28 12:30:01,559 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:30:01,562 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [19.32, 192.168.20.84:65279]
+2021-06-28 12:30:57,841 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:31:13,321 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x11612f700>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 920, in create
+    validated_data = super(self, ListSerializer()).validated_data
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 589, in __init__
+    assert self.child is not None, '`child` is a required argument.'
+AssertionError: `child` is a required argument.
+2021-06-28 12:31:13,413 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:31:13,415 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [9.77, 192.168.20.84:65406]
+2021-06-28 12:31:46,878 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 12:32:15,073 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x1144e62e0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 686, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 694, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 920, in create
+    validated_data = super(self, ListSerializer.data)
+TypeError: super() argument 1 must be type, not WorkSheetCreateSerializer
+2021-06-28 12:32:15,157 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 12:32:15,160 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [23.48, 192.168.20.84:65472]
+2021-06-28 12:43:32,512 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-28 12:43:35,125 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 13:22:06,431 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-28 13:22:08,786 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 13:46:08,531 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 13:46:20,337 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 13:50:09,250 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 13:50:17,409 log.py[line:222] WARNING Unauthorized: /api/work/sheet
+2021-06-28 13:50:17,411 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 401 [0.12, 192.168.20.84:49914]
+2021-06-28 13:57:07,407 runserver.py[line:141] INFO HTTP POST /api/authorizations 200 [0.18, 192.168.20.84:50094]
+2021-06-28 13:58:37,744 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 13:59:07,823 exception_handel_views.py[line:82] ERROR [<devices.views.WorkSheetView object at 0x115fcf0d0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 687, in post
+    return self.bulk_create(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py", line 695, in bulk_create
+    self.perform_create(serializer)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 26, in perform_create
+    serializer.save()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 728, in save
+    self.instance = self.create(validated_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 699, in create
+    return [
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 700, in <listcomp>
+    self.child.create(attrs) for attrs in validated_data
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py", line 924, in create
+    validated_data['work_sheet_code'] = work_sheet_code
+TypeError: 'super' object does not support item assignment
+2021-06-28 13:59:07,916 log.py[line:222] ERROR Internal Server Error: /api/work/sheet
+2021-06-28 13:59:07,918 runserver.py[line:154] ERROR HTTP POST /api/work/sheet 500 [4.24, 192.168.20.84:50120]
+2021-06-28 13:59:34,007 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/serializers.py changed, reloading.
+2021-06-28 13:59:36,748 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:00:03,996 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [3.04, 192.168.20.84:50139]
+2021-06-28 14:01:30,188 runserver.py[line:141] INFO HTTP POST /api/work/sheet 201 [6.00, 192.168.20.84:50160]
+2021-06-28 14:06:07,786 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 14:06:10,183 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:08:50,156 runserver.py[line:141] INFO HTTP POST /api/events/work/sheet 201 [38.73, 192.168.20.84:50223]
+2021-06-28 14:10:20,129 runserver.py[line:141] INFO HTTP POST /api/events/work/sheet 201 [11.17, 192.168.20.84:50243]
+2021-06-28 14:26:14,841 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 14:26:17,661 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:26:27,682 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 14:26:30,786 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:26:56,536 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 14:26:58,729 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:28:00,624 runserver.py[line:141] INFO HTTP POST /api/events/work/sheet 201 [56.37, 192.168.20.84:50406]
+2021-06-28 14:34:12,063 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:36:19,444 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:40:54,554 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 14:49:28,475 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:55:58,005 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:57:33,846 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 14:57:55,894 log.py[line:222] WARNING Bad Request: /api/events/work/sheet
+2021-06-28 14:57:55,896 runserver.py[line:151] WARNING HTTP POST /api/events/work/sheet 400 [15.08, 192.168.20.84:50974]
+2021-06-28 15:02:26,347 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 15:02:30,206 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:02:34,766 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 15:02:36,921 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:04:08,511 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 15:04:11,045 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:04:19,299 log.py[line:222] WARNING Bad Request: /api/events/work/sheet
+2021-06-28 15:04:19,301 runserver.py[line:151] WARNING HTTP POST /api/events/work/sheet 400 [5.32, 192.168.20.84:51075]
+2021-06-28 15:04:42,613 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-28 15:04:44,692 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:05:39,583 runserver.py[line:141] INFO HTTP POST /api/events/work/sheet 201 [8.49, 192.168.20.84:51102]
+2021-06-28 15:05:48,526 log.py[line:222] WARNING Bad Request: /api/events/work/sheet
+2021-06-28 15:05:48,529 runserver.py[line:151] WARNING HTTP POST /api/events/work/sheet 400 [2.37, 192.168.20.84:51108]
+2021-06-28 15:18:39,687 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-28 15:18:42,589 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:28:43,376 log.py[line:222] WARNING Bad Request: /api/alarm/events/persons
+2021-06-28 15:28:43,378 runserver.py[line:151] WARNING HTTP POST /api/alarm/events/persons 400 [0.13, 192.168.20.84:51321]
+2021-06-28 15:28:53,263 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [0.08, 192.168.20.84:51326]
+2021-06-28 15:30:16,368 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [18.73, 192.168.20.84:51357]
+2021-06-28 15:32:38,027 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/models.py changed, reloading.
+2021-06-28 15:32:40,083 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:32:54,528 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/models.py changed, reloading.
+2021-06-28 15:32:56,675 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:36:32,249 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/models.py changed, reloading.
+2021-06-28 15:36:34,326 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:37:21,041 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/models.py changed, reloading.
+2021-06-28 15:37:23,177 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:40:13,151 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/models.py changed, reloading.
+2021-06-28 15:40:15,199 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:40:21,826 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/users/models.py changed, reloading.
+2021-06-28 15:40:23,890 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:40:49,942 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [2.26, 192.168.20.84:51658]
+2021-06-28 15:45:34,157 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-28 15:45:36,451 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 15:45:45,325 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [3.00, 192.168.20.84:51758]
+2021-06-28 16:42:08,007 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet 200 [0.12, 192.168.20.84:53017]
+2021-06-28 16:42:50,664 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user=13 200 [0.18, 192.168.20.84:53031]
+2021-06-28 16:42:57,381 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user=13 200 [0.18, 192.168.20.84:53033]
+2021-06-28 16:43:08,076 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user=13 200 [0.17, 192.168.20.84:53039]
+2021-06-28 16:43:34,863 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_id=13 200 [5.43, 192.168.20.84:53045]
+2021-06-28 16:43:49,965 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user=13 200 [4.17, 192.168.20.84:53050]
+2021-06-28 16:46:08,344 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:46:13,039 exception_handel_views.py[line:82] ERROR [<events.views.AlarmEventWorkSheetView object at 0x118cd9400>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py", line 813, in get
+    serializer.is_valid(raise_exception=True)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 236, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 434, in run_validation
+    value = self.to_internal_value(data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/utils/serializer.py", line 150, in to_internal_value
+    set_value(ret, field.source_attrs, validated_value)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/fields.py", line 135, in set_value
+    dictionary[keys[-1]] = value
+TypeError: 'User' object does not support item assignment
+2021-06-28 16:46:13,116 log.py[line:222] ERROR Internal Server Error: /api/events/work/sheet
+2021-06-28 16:46:13,118 runserver.py[line:154] ERROR HTTP GET /api/events/work/sheet?dispose_user_name=1231&dispose_user_id=13 500 [0.11, 192.168.20.84:53103]
+2021-06-28 16:47:00,822 exception_handel_views.py[line:82] ERROR [<events.views.AlarmEventWorkSheetView object at 0x118bc26a0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py", line 813, in get
+    serializer.is_valid(raise_exception=True)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 236, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/serializers.py", line 434, in run_validation
+    value = self.to_internal_value(data)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/utils/serializer.py", line 150, in to_internal_value
+    set_value(ret, field.source_attrs, validated_value)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/fields.py", line 135, in set_value
+    dictionary[keys[-1]] = value
+TypeError: 'User' object does not support item assignment
+2021-06-28 16:47:00,823 log.py[line:222] ERROR Internal Server Error: /api/events/work/sheet
+2021-06-28 16:47:00,826 runserver.py[line:154] ERROR HTTP GET /api/events/work/sheet?dispose_user_name=1231&dispose_user_id=13 500 [0.05, 192.168.20.84:53140]
+2021-06-28 16:47:08,743 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:48:30,390 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:50:03,333 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:50:10,998 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=1231&dispose_user_id=13 200 [2.81, 192.168.20.84:53224]
+2021-06-28 16:50:19,669 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=1231&dispose_user_id= 200 [2.10, 192.168.20.84:53229]
+2021-06-28 16:50:38,904 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=1231&dispose_user_id= 200 [11.83, 192.168.20.84:53234]
+2021-06-28 16:50:48,079 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id= 200 [3.55, 192.168.20.84:53241]
+2021-06-28 16:51:01,899 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id=13 200 [8.11, 192.168.20.84:53244]
+2021-06-28 16:52:12,890 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:52:19,239 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id=13 200 [5.04, 192.168.20.84:53274]
+2021-06-28 16:52:29,275 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id= 200 [1.70, 192.168.20.84:53282]
+2021-06-28 16:52:41,670 exception_handel_views.py[line:82] ERROR [<events.views.AlarmEventWorkSheetView object at 0x114b6fdf0>] 未知错误
+Traceback (most recent call last):
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/views.py", line 492, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py", line 817, in get
+    return super().list(request, *args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/rest_framework/mixins.py", line 40, in list
+    queryset = self.filter_queryset(self.get_queryset())
+  File "/Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py", line 799, in filter_queryset
+    queryset = queryset.filter(**filter_data)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/query.py", line 892, in filter
+    return self._filter_or_exclude(False, *args, **kwargs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/query.py", line 910, in _filter_or_exclude
+    clone.query.add_q(Q(*args, **kwargs))
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1290, in add_q
+    clause, _ = self._add_q(q_object, self.used_aliases)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1315, in _add_q
+    child_clause, needed_inner = self.build_filter(
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1251, in build_filter
+    condition = self.build_lookup(lookups, col, value)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1116, in build_lookup
+    lookup = lookup_class(lhs, rhs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/lookups.py", line 20, in __init__
+    self.rhs = self.get_prep_lookup()
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/fields/related_lookups.py", line 115, in get_prep_lookup
+    self.rhs = target_field.get_prep_value(self.rhs)
+  File "/Users/liangzaisama/.virtualenvs/sms/lib/python3.8/site-packages/django/db/models/fields/__init__.py", line 966, in get_prep_value
+    return int(value)
+ValueError: invalid literal for int() with base 10: 'q'
+2021-06-28 16:52:41,703 log.py[line:222] ERROR Internal Server Error: /api/events/work/sheet
+2021-06-28 16:52:41,705 runserver.py[line:154] ERROR HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id=q 500 [4.18, 192.168.20.84:53285]
+2021-06-28 16:53:04,917 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:53:09,330 log.py[line:222] WARNING Bad Request: /api/events/work/sheet
+2021-06-28 16:53:09,333 runserver.py[line:151] WARNING HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id=q 400 [0.13, 192.168.20.84:53305]
+2021-06-28 16:53:47,623 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-28 16:53:49,856 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:53:52,239 log.py[line:222] WARNING Bad Request: /api/events/work/sheet
+2021-06-28 16:53:52,242 runserver.py[line:151] WARNING HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id=q 400 [0.09, 192.168.20.84:53323]
+2021-06-28 16:54:23,694 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-28 16:54:25,909 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-28 16:54:33,793 log.py[line:222] WARNING Bad Request: /api/events/work/sheet
+2021-06-28 16:54:33,795 runserver.py[line:151] WARNING HTTP GET /api/events/work/sheet?priority=q&dispose_user_name=&dispose_user_id=q 400 [0.13, 192.168.20.84:53341]
+2021-06-28 16:54:59,216 runserver.py[line:141] INFO HTTP GET /api/events/work/sheet?dispose_user_name=&dispose_user_id=100 200 [4.17, 192.168.20.84:53348]
+2021-06-29 09:45:57,416 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-29 09:45:59,721 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 09:51:09,893 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-29 09:51:12,124 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 09:52:11,022 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-29 09:52:11,024 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [0.15, 192.168.20.84:54651]
+2021-06-29 09:52:50,370 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 09:53:05,978 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-29 09:53:05,981 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [11.38, 192.168.20.84:54674]
+2021-06-29 09:53:32,089 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.
+2021-06-29 09:53:34,243 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 09:53:48,421 log.py[line:222] WARNING Bad Request: /api/work/sheet
+2021-06-29 09:53:48,424 runserver.py[line:151] WARNING HTTP POST /api/work/sheet 400 [6.68, 192.168.20.84:54700]
+2021-06-29 13:53:38,507 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/views.py changed, reloading.
+2021-06-29 14:59:23,610 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 15:04:15,541 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [12.99, 192.168.20.84:49251]
+2021-06-29 15:14:32,340 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [0.02, 192.168.20.84:49584]
+2021-06-29 15:14:36,580 runserver.py[line:141] INFO HTTP POST /api/alarm/events/persons 201 [0.06, 192.168.20.84:49587]
+2021-06-29 15:22:33,684 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events/serializers.py changed, reloading.
+2021-06-29 15:22:36,918 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 15:27:24,154 autoreload.py[line:597] INFO Watching for file changes with StatReloader
+2021-06-29 20:31:23,985 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:54407]
+2021-06-29 20:31:24,282 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:54407]
+2021-06-29 20:31:24,283 a.py[line:226] ERROR Handshake status 500 Internal server error
+2021-06-29 20:32:00,674 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:54420]
+2021-06-29 20:32:01,415 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:54420]
+2021-06-29 20:32:01,415 a.py[line:226] ERROR Handshake status 500 Internal server error
+2021-06-29 20:32:09,131 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:54425]
+2021-06-29 20:32:09,450 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:54425]
+2021-06-29 20:32:09,451 a.py[line:226] ERROR Handshake status 500 Internal server error
+2021-06-29 20:32:22,679 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:54433]
+2021-06-29 20:32:23,509 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:54433]
+2021-06-29 20:32:23,509 a.py[line:226] ERROR Handshake status 500 Internal server error
+2021-06-30 09:30:22,582 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:56923]
+2021-06-30 09:30:23,184 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:56923]
+2021-06-30 09:35:25,517 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:57015]
+2021-06-30 09:35:26,399 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:57015]
+2021-06-30 09:35:48,712 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:57026]
+2021-06-30 09:35:49,493 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:57026]
+2021-06-30 09:36:09,287 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:57038]
+2021-06-30 09:36:09,575 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:57038]
+2021-06-30 09:36:39,045 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:57048]
+2021-06-30 09:36:39,709 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:57048]
+2021-06-30 10:14:12,554 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:57735]
+2021-06-30 10:14:12,676 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:57735]
+2021-06-30 10:14:25,073 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:57745]
+2021-06-30 10:14:25,730 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:57745]
+2021-06-30 20:03:03,365 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52082]
+2021-06-30 20:03:03,561 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52082]
+2021-06-30 20:03:45,943 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52087]
+2021-06-30 20:03:46,703 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52087]
+2021-06-30 20:04:01,208 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52092]
+2021-06-30 20:04:01,768 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52092]
+2021-06-30 20:04:43,986 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52114]
+2021-06-30 20:04:44,916 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52114]
+2021-06-30 20:05:14,008 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52127]
+2021-06-30 20:05:15,016 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52127]
+2021-06-30 20:07:04,316 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52163]
+2021-06-30 20:07:04,396 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52163]
+2021-06-30 20:13:02,082 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52286]
+2021-06-30 20:13:02,633 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52286]
+2021-06-30 20:13:44,192 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:52308]
+2021-06-30 20:13:44,787 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:52308]
+2021-07-01 10:09:16,824 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:58356]
+2021-07-01 10:09:16,990 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:58356]
+2021-07-01 10:09:35,609 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:58367]
+2021-07-01 10:09:36,067 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:58367]
+2021-07-01 10:10:16,631 runserver.py[line:162] INFO WebSocket HANDSHAKING /ws/device_state [127.0.0.1:58385]
+2021-07-01 10:10:17,215 runserver.py[line:160] INFO WebSocket DISCONNECT /ws/device_state [127.0.0.1:58385]
+2021-07-01 15:31:18,853 autoreload.py[line:217] INFO /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices/views.py changed, reloading.

@@ -1,0 +1,2 @@
+#!/bin/bash
+source /home/.virtualenvs/SMS/bin/activate;python /home/OPS/sms_compile/programctl/main.pyc $1 $2

@@ -1,0 +1,483 @@
+"""消息处理的Mixin类，配置装饰器及数据对象进行业务处理。
+
+由消息worker类继承Mixin类，来获取对应的实现消息处理方法。
+包含事件内容：
+1 各个子系统的设备相关事件
+2 各个子系统的报警事件
+3 视频分析报警事件
+4 航班事件
+
+Example:
+    class CommonWork(AbstractWorker,
+                 mixins.PassageWayMixin,
+                 mixins.CameraMixin):
+    pass
+"""
+from core.generics import LabelResourceBulkProxy
+
+from views import event, device, analysis, current, flight
+
+
+class MsgNestedSeq:
+
+    # 基础标签
+    Common_Nested_Seq = ('msg', 'body')
+    # 设备
+    DEVICE_Nested_Seq = ('msg', 'body', 'device')
+    # 设备状态
+    DEVICE_STATE_Nested_Seq = ('msg', 'body', 'device_status')
+    # 设备同步列表
+    DEVICE_SYNC_Nested_Seq = ('msg', 'body', 'device_sync', 'device_list')
+    # 事件
+    ALARM_EVENT_Nested_Seq = ('msg', 'body', 'event')
+    # 道口车辆出入信息
+    Crossing_Traffic_Nested_Seq = ('msg', 'body', 'car_transit')
+    # 门禁通信信息
+    Entrance_Punch_Nested_Seq = ('msg', 'body', 'entrance_punch')
+
+
+class MaintenanceMixin:
+    """围界事件处理"""
+
+    def ais_alarm_trigger(self, label):
+        """围界报警触发"""
+        return event.MaintenanceEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).create()
+
+    def ais_alarm_deactive(self, label):
+        """围界报警处置"""
+        return event.MaintenanceEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).update()
+
+    def ais_device_add(self, label):
+        """围界设备新增"""
+        return device.MaintenanceDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).create()
+
+    def ais_device_delete(self, label):
+        """围界设备删除"""
+        return device.MaintenanceDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).delete(fake=True)
+
+    def ais_device_update(self, label):
+        """围界设备更新"""
+        return device.MaintenanceDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).update()
+
+    def ais_device_statechange(self, label):
+        """围界设备状态变更"""
+        return device.MaintenanceDeviceResource(label, MsgNestedSeq.DEVICE_STATE_Nested_Seq).update(
+            label_method='get_state_label'
+        )
+
+    def ais_device_sync(self, label):
+        """围界设备整表同步"""
+        return LabelResourceBulkProxy(
+            label,
+            MsgNestedSeq.DEVICE_SYNC_Nested_Seq,
+            device.MaintenanceDeviceResource
+        ).synchronization()
+
+
+class EntranceMixin:
+    """门禁事件处理"""
+
+    def acs_alarm_trigger(self, label):
+        """门禁报警触发"""
+        return event.EntranceEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).create()
+
+    def acs_alarm_deactive(self, label):
+        """门禁报警处置"""
+        return event.EntranceEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).update()
+
+    def acs_device_add(self, label):
+        """门禁设备新增"""
+        return device.EntranceDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).create()
+
+    def acs_device_delete(self, label):
+        """门禁设备删除"""
+        return device.EntranceDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).delete(fake=True)
+
+    def acs_device_update(self, label):
+        """门禁设备更新"""
+        return device.EntranceDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).update()
+
+    def acs_device_statechange(self, label):
+        """门禁设备状态变更"""
+        return device.EntranceDeviceResource(label, MsgNestedSeq.DEVICE_STATE_Nested_Seq).update(
+            label_method='get_state_label'
+        )
+
+    def acs_device_sync(self, label):
+        """门禁设备整表同步"""
+        return LabelResourceBulkProxy(
+            label,
+            MsgNestedSeq.DEVICE_SYNC_Nested_Seq,
+            device.EntranceDeviceResource
+        ).synchronization()
+
+    def acs_accesscontrol_paybycard(self, label):
+        """门禁设备刷卡记录"""
+        return current.EntranceSlotCardResource(label, MsgNestedSeq.Entrance_Punch_Nested_Seq).create()
+
+
+class FireMixin:
+    """消防事件处理"""
+
+    def xfhz_alarm_trigger(self, label):
+        """消防报警触发"""
+        return event.FireEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).create()
+
+    def xfhz_alarm_deactive(self, label):
+        """消防报警处置"""
+        return event.FireEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).update()
+
+    def xfhz_device_add(self, label):
+        """消防设备新增"""
+        return device.FireDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).create()
+
+    def xfhz_device_delete(self, label):
+        """消防设备删除"""
+        return device.FireDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).delete(fake=True)
+
+    def xfhz_device_update(self, label):
+        """消防设备更新"""
+        return device.FireDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).update()
+
+    def xfhz_device_statechange(self, label):
+        """消防设备状态变更"""
+        return device.FireDeviceResource(label, MsgNestedSeq.DEVICE_STATE_Nested_Seq).update(
+            label_method='get_state_label'
+        )
+
+    def xfhz_device_sync(self, label):
+        """消防设备整表同步"""
+        return LabelResourceBulkProxy(
+            label,
+            MsgNestedSeq.DEVICE_SYNC_Nested_Seq,
+            device.FireDeviceResource
+        ).synchronization()
+
+
+class ConcealMixin:
+    """隐蔽报警事件处理"""
+
+    def ybbj_alarm_trigger(self, label):
+        """隐蔽报警触发"""
+        return event.ConcealEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).create()
+
+    def ybbj_alarm_deactive(self, label):
+        """隐蔽报警处置"""
+        return event.ConcealEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).update()
+
+    def ybbj_device_add(self, label):
+        """隐蔽设备新增"""
+        return device.ConcealDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).create()
+
+    def ybbj_device_delete(self, label):
+        """隐蔽设备删除"""
+        return device.ConcealDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).delete(fake=True)
+
+    def ybbj_device_update(self, label):
+        """隐蔽设备更新"""
+        return device.ConcealDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).update()
+
+    def ybbj_device_statechange(self, label):
+        """隐蔽设备状态变更"""
+        return device.ConcealDeviceResource(label, MsgNestedSeq.DEVICE_STATE_Nested_Seq).update(
+            label_method='get_state_label'
+        )
+
+    def ybbj_device_sync(self, label):
+        """隐蔽设备整表同步"""
+        return LabelResourceBulkProxy(
+            label,
+            MsgNestedSeq.DEVICE_SYNC_Nested_Seq,
+            device.ConcealDeviceResource
+        ).synchronization()
+
+
+class PassageWayMixin:
+    """道口事件处理"""
+
+    def cms_alarm_trigger(self, label):
+        """道口报警触发"""
+        return event.PassageWayEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).create()
+
+    def cms_alarm_deactive(self, label):
+        """道口报警处置"""
+        return event.PassageWayEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).update()
+
+    def cms_device_add(self, label):
+        """道口设备新增"""
+        return device.PassageWayDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).create()
+
+    def cms_device_delete(self, label):
+        """道口设备删除"""
+        return device.PassageWayDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).delete(fake=True)
+
+    def cms_device_update(self, label):
+        """道口设备更新"""
+        return device.PassageWayDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).update()
+    
+    def cms_device_sync(self, label):
+        """道口设备整表同步"""
+        return LabelResourceBulkProxy(
+            label,
+            MsgNestedSeq.DEVICE_SYNC_Nested_Seq,
+            device.PassageWayDeviceResource
+        ).synchronization()
+
+    def cms_device_statechange(self, label):
+        """道口设备状态变更"""
+        return device.PassageWayDeviceResource(label, MsgNestedSeq.DEVICE_STATE_Nested_Seq).update(
+            label_method='get_state_label'
+        )
+
+    def cms_car_transit(self, label):
+        """道口车辆出入记录"""
+        return current.CrossingTrafficResource(label, MsgNestedSeq.Crossing_Traffic_Nested_Seq).create()
+
+
+class CameraMixin:
+    """视频监控事件处理"""
+
+    def vms_device_add(self, label):
+        """摄像机设备新增"""
+        return device.CameraDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).create()
+
+    def vms_device_delete(self, label):
+        """摄像机设备删除"""
+        return device.CameraDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).delete(fake=True)
+
+    def vms_device_update(self, label):
+        """摄像机设备更新"""
+        return device.CameraDeviceResource(label, MsgNestedSeq.DEVICE_Nested_Seq).update()
+
+    def vms_device_sync(self, label):
+        """摄像机整表同步"""
+        return LabelResourceBulkProxy(
+            label,
+            MsgNestedSeq.DEVICE_SYNC_Nested_Seq,
+            device.CameraDeviceResource
+        ).synchronization()
+
+    def vms_device_statechange(self, label):
+        """摄像机设备状态变更"""
+        return device.CameraDeviceResource(label, MsgNestedSeq.DEVICE_STATE_Nested_Seq).update(
+            label_method='get_state_label'
+        )
+
+    def vms_alarm_trigger(self, label):
+        """摄像机报警触发"""
+        return event.CameraEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).create()
+
+    def vms_alarm_deactive(self, label):
+        """摄像机报警处置"""
+        return event.CameraEventResource(label, MsgNestedSeq.ALARM_EVENT_Nested_Seq).update()
+
+
+class VideoAnalysisMixin:
+    """视频分析报警消息处理"""
+
+    def zvams_alarm_trigger(self, label):
+        """布控报警"""
+        return analysis.DeployAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_analysis_density_alarm(self, label):
+        """密度报警"""
+        return analysis.DensityAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_analysis_queue_alarm(self, label):
+        """排队报警"""
+        return analysis.QueueAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_discern_behavior_areainvasion(self, label):
+        """入侵"""
+        return analysis.InvasionAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_discern_behavior_border(self, label):
+        """越界"""
+        return analysis.BorderAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_discern_behavior_wandering(self, label):
+        """徘徊"""
+        return analysis.WanderAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_discern_behavior_carryover(self, label):
+        """遗留物"""
+        return analysis.RemnantAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_discern_behavior_posture(self, label):
+        """姿态"""
+        return analysis.PostureAnalysisEventResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_face_capture(self, label):
+        """布控抓拍"""
+        return current.DeploySnapAnalysisResource(label, MsgNestedSeq.Common_Nested_Seq).create()
+
+    def zvams_analysis_people_queue(self, label):
+        """排队实时"""
+        return current.LineupCurrentAnalysisResource(label, MsgNestedSeq.Common_Nested_Seq).synchronization()
+
+    def zvams_analysis_people_counting(self, label):
+        """人数统计实时"""
+        return current.PeopleCountingAnalysisResource(label, MsgNestedSeq.Common_Nested_Seq).synchronization()
+
+
+class IISFlightMixin:
+    """航班系统航班消息处理"""
+
+    def iis_dfdl(self, label):
+        """航班整表同步事件
+
+        根据传入标签数据对象调用对象的方法即可实现业务逻辑
+        synchronization: 整表同步数据
+        create: 新增数据
+        delete: 删除数据
+        update: 更新数据
+
+        Args:
+            label: 标签数据操作对象
+        """
+        LabelResourceBulkProxy(label, flight.FlightLabelResource).synchronization()
+
+    def iis_dfie(self, label):
+        """航班动态增加"""
+        LabelResourceBulkProxy(label, flight.FlightLabelResource).create()
+
+    def iis_dfde(self, label):
+        """航班动态删除"""
+        LabelResourceBulkProxy(label, flight.FlightLabelResource).delete()
+
+    def iis_afid(self, label):
+        """航班衔接变更"""
+        LabelResourceBulkProxy(label, flight.FlightLabelResource).update()
+        # label.update(update_fields=['af_id'])
+
+    def iis_sflg(self, label):
+        """共享航班变更"""
+        label.update(update_fields=['flight_number_share'])
+
+    def iis_airl(self, label):
+        """航线变更"""
+        label.update(
+            update_fields=['takeoff_iata', 'destination_iata', 'stopover_iata', 'plan_takeoff', 'actual_arrive',
+                           'plan_arrival', 'estimate_takeoff', 'estimate_arrival', 'actual_takeoff']
+        )
+
+    def iis_hbtt(self, label):
+        """航班号变更"""
+        label.update(update_fields=['flight_number', 'company'])
+
+    def iis_dlye(self, label):
+        """航班延误"""
+        label.update(
+            update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son', 'estimate_takeoff'])
+
+    def iis_cane(self, label):
+        """航班取消"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    def iis_rtne(self, label):
+        """航班返回"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    def iis_bake(self, label):
+        """航班滑回"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    def iis_alte(self, label):
+        """航班备降"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    def iis_fptt(self, label):
+        """航班计划时间变更"""
+        label.update(update_fields=['plan_takeoff', 'plan_arrival'])
+
+    def iis_fett(self, label):
+        """航班预计时间变更"""
+        label.update(update_fields=['estimate_takeoff', 'estimate_arrival'])
+
+    def iis_frtt(self, label):
+        """航班实际时间变更"""
+        label.update(update_fields=['actual_takeoff', 'actual_arrive'])
+
+    def iis_gtls(self, label):
+        """航班登机门变更"""
+        label.update(update_fields=['boarding_gate'])
+
+    def iis_blls(self, label):
+        """航班行李转盘变更"""
+        label.update(update_fields=['baggage_turntable'])
+
+    def iis_trml(self, label):
+        """航站楼变更 """
+        label.update(update_fields=['terminal_info', 'inter_terminal_info'])
+
+    def iis_fatt(self, label):
+        """航班属性变更"""
+        label.update(update_fields=['flight_property'])
+
+    def iis_bore(self, label):
+        """航班开始登机"""
+        label.update()
+
+    def iis_poke(self, label):
+        """航班结束登机"""
+        label.update()
+
+
+class IISExceptionMixin:
+    """航班系统异常消息处理"""
+
+    def iis_arie(self, label):
+        """航班异常消息新增"""
+        label.create()
+
+    def iis_arue(self, label):
+        """航班异常消息修改"""
+        label.update()
+
+    def iis_arde(self, label):
+        """航班异常消息删除"""
+        label.delete()
+
+    def iis_ardl(self, label):
+        """航班异常整表同步"""
+        label.synchronization()
+
+
+class IISCompanyMixin:
+    """航班系统航空公司消息处理"""
+
+    def iis_awie(self, label):
+        """航空公司新增"""
+        label.create()
+
+    def iis_awue(self, label):
+        """航空公司修改"""
+        label.update()
+
+    def iis_awde(self, label):
+        """航空公司删除"""
+        label.delete()
+
+    def iis_awdl(self, label):
+        """航空公司整表同步"""
+        label.synchronization()
+
+
+class IISAirportMixin:
+    """航班系统机场消息处理"""
+
+    def iis_apie(self, label):
+        """机场新增"""
+        label.create()
+
+    def iis_apue(self, label):
+        """机场修改"""
+        label.update()
+
+    def iis_apde(self, label):
+        """机场删除"""
+        label.delete()
+
+    def iis_apdl(self, label):
+        """机场整表同步"""
+        label.synchronization()

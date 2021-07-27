@@ -1,0 +1,339 @@
+import datetime
+from collections import OrderedDict
+
+from django.core.cache import cache
+from django.db import connection
+from django.db.models import Count
+
+from devices.models import DeviceInfo
+from situations import serializers
+from situations.models import ResourceInfo, PassageWayCarPassThrough
+from situations.utils import PeopleCountingIntegrate, PrePeopleCountingIntegrate
+from security_platform import ErrorType, config_parser
+from security_platform.utils.views import (
+    CustomGenericAPIView, NoPaginationListCustomAPIView, ListCustomAPIView
+)
+from events.models import (
+    DeployPersonSnapRecord, PersonDensityRecord, BehaviorAlarmRecord, DeviceAlarmEvent,
+    PlaceAlarmRecord
+)
+
+
+class PassagewayView(NoPaginationListCustomAPIView):
+    """出入口信息接口"""
+
+    serializer_class = serializers.ResourceInfoSerializer
+    queryset = ResourceInfo.objects.filter(resource_type=ResourceInfo.ResourceType.PASSAGEWAY).only('name')
+
+
+class CheckInCounterView(NoPaginationListCustomAPIView):
+    """值机柜台列表信息接口"""
+
+    serializer_class = serializers.CheckInCounterSerializer
+    queryset = ResourceInfo.objects.filter(resource_type=ResourceInfo.ResourceType.COUNTER).only(
+        'name', 'current_queue_number')
+
+
+class SecurityCheckView(NoPaginationListCustomAPIView):
+    """安检口列表信息接口"""
+
+    serializer_class = serializers.SecurityCheckSerializer
+    queryset = ResourceInfo.objects.filter(resource_type=ResourceInfo.ResourceType.SECURITY).only(
+        'name', 'current_queue_number')
+
+
+# noinspection PyUnresolvedReferences, PyAttributeOutsideInit
+class ResourceTypeMixin:
+
+    @property
+    def resource_type(self):
+        if not hasattr(self, '_resource_type'):
+            self._resource_type = self.validate_resource_type()
+
+        return self._resource_type
+
+    def validate_resource_type(self):
+        resource_type = self.request.query_params.get('resource_type')
+
+        if resource_type is None:
+            self.param_error(param_name='resource_type', code=ErrorType.REQUIRED)
+
+        if resource_type not in ResourceInfo.ResourceType:
+            self.param_error(param_name='resource_type')
+
+        return resource_type
+
+
+class PassengerFlowView(CustomGenericAPIView, ResourceTypeMixin):
+
+    current_integrate_class = PeopleCountingIntegrate
+    predicted_integrate_class = PrePeopleCountingIntegrate
+    PREDICTED_CACHE_DATA_EXPIRE = 86400
+    PREDICTED_CACHE_KEY = '{resource_type}_predicted_{current_time_date}'
+    queryset = ResourceInfo.objects.all()
+
+    def get_queryset(self):
+        queryset = self.queryset.filter(resource_type=self.resource_type)
+
+        if self.resource_type == ResourceInfo.ResourceType.PASSAGEWAY:
+            # 出入口的只计算入口的人数
+            queryset = self.queryset.filter(resource_type_sec=ResourceInfo.ResourceTypeSecond.ENTRANCE)
+
+        return queryset
+
+    def get_resources_ids(self):
+        return self.get_queryset().values_list('id', flat=True)
+
+    def get_cache_key(self, current_time):
+        return self.PREDICTED_CACHE_KEY.format(
+            resource_type=self.resource_type,
+            current_time_date=str(current_time.date())
+        )
+
+    def add_predicted_data(self, data, predicted_obj):
+        """增加预测数据"""
+        cache_key = self.get_cache_key(predicted_obj.current_time)
+        cache.delete(cache_key)
+        predicted_data = cache.get(cache_key, OrderedDict())
+
+        if not predicted_data:
+            predicted_data['predicted_data'] = predicted_obj.data
+            predicted_data['predicted_speed'] = predicted_obj.speed
+            predicted_data['predicted_total_people_number'] = predicted_obj.total_count
+
+            cache.set(cache_key, predicted_data, self.PREDICTED_CACHE_DATA_EXPIRE)
+
+        data.update(predicted_data)
+
+    def add_current_data(self, data, current_obj):
+        """增加实时数据"""
+        data['current_data'] = current_obj.data
+        data['current_speed'] = current_obj.speed
+        data['current_total_people_number'] = current_obj.total_count
+
+    def get(self, request):
+        current_time = datetime.datetime.now()
+        resources_ids = tuple(self.get_resources_ids())
+
+        data = OrderedDict()
+        self.add_current_data(data, self.current_integrate_class(current_time, resources_ids))
+        self.add_predicted_data(data, self.predicted_integrate_class(current_time, resources_ids))
+
+        return self.success_response(data=data)
+
+
+# class DeployAlarmAndSnapView(CustomGenericAPIView, ResourceTypeMixin):
+#     """布控信息接口"""
+#
+#     def get_deploy_alarm(self):
+#         return DeployAlarmRecord.objects.filter(resource__resource_type=self.resource_type).last()
+#
+#     def get_deploy_snap(self):
+#         return DeployPersonSnapRecord.objects.filter(resource__resource_type=self.resource_type).select_related(
+#             'resource').only('snap_time', 'snap_image_url', 'resource__name').order_by('-id')[0: 50]
+#
+#     def get(self, request):
+#         deploy_alarm = self.get_deploy_alarm()
+#         deploy_snap_queryset = self.get_deploy_snap()
+#
+#         data = OrderedDict()
+#         data['deploy_alarm'] = serializers.DeployAlarmSerializer(deploy_alarm).data if deploy_alarm else {}
+#         data['deploy_snap'] = serializers.DeploySnapSerializer(deploy_snap_queryset, many=True).data
+#
+#         return self.success_response(data=data)
+
+
+class DeploySnapView(ListCustomAPIView, ResourceTypeMixin):
+    """布控抓拍信息列表"""
+
+    serializer_class = serializers.DeploySnapSerializer
+    queryset = DeployPersonSnapRecord.objects.all()
+
+    def get_queryset(self):
+        """根据资源类型过滤查询集"""
+        return self.queryset.filter(resource__resource_type=self.resource_type).select_related(
+            'resource').only('snap_time', 'snap_image_url', 'resource__name').order_by('-id')
+
+
+class DensityAlarmView(ListCustomAPIView):
+    """密度报警记录"""
+
+    serializer_class = serializers.DensityAlarmSerializer
+    queryset = PersonDensityRecord.objects.all()
+
+    def get_queryset(self):
+        # 获取今天的报警数据
+        filter_data = {'resource__resource_type': ResourceInfo.ResourceType.SECURITY_HALL}
+
+        only_fields = [
+            'density_image_url',
+            'event__id',
+            'event__alarm_time',
+            'event__priority',
+            'event__device__device_name',
+            'event__device__device_code',
+            'event__device__cameradevice__flow_address'
+        ]
+
+        return self.queryset.filter(**filter_data).only(*only_fields).select_related(
+            'event', 'event__device', 'event__device__cameradevice').order_by('-id')
+
+
+class PostureAlarmView(ListCustomAPIView):
+    """
+    姿态动作识别报警列表
+    """
+
+    serializer_class = serializers.PostureAlarmSerializer
+    queryset = BehaviorAlarmRecord.objects.all()
+
+    def get_queryset(self):
+        """过滤原始查询集
+
+        过滤出反向通道的所有报警,增加关联查询字段及排序
+
+        Returns:
+            queryset: 过滤后的资源查询集
+        """
+        filter_data = {'resource__resource_type': ResourceInfo.ResourceType.REVERSE}
+
+        only_fields = [
+            'alarm_image_url',
+            'event__id',
+            'event__alarm_time',
+            'event__event_name',
+            'resource__name',
+        ]
+
+        return self.queryset.filter(**filter_data).only(*only_fields).select_related(
+            'event', 'resource').order_by('-id')
+
+
+class ScopesAlarmView(ListCustomAPIView):
+    """围界设备报警记录"""
+
+    serializer_class = serializers.ScopesAlarmSerializer
+    queryset = DeviceAlarmEvent.objects.filter(belong_system=DeviceInfo.BelongSystem.MAINTENANCE).only(
+        'event_name',
+        'alarm_time',
+        'area_code',
+        'priority',
+        'alarm_time',
+        'device__device_name',
+        'device__device_code'
+    ).select_related('device').order_by('-id')
+
+
+class BoardingGateView(NoPaginationListCustomAPIView):
+    """登机口信息"""
+
+    serializer_class = serializers.BoardingGateSerializer
+    queryset = ResourceInfo.objects.filter(resource_type=ResourceInfo.ResourceType.BOARDING).only(
+        'name', 'status').prefetch_related('flights')
+
+
+class BaggageTurntableView(NoPaginationListCustomAPIView):
+    """行李抓盘信息"""
+
+    serializer_class = serializers.BaggageTurntableSerializer
+    queryset = ResourceInfo.objects.filter(resource_type=ResourceInfo.ResourceType.BAGGAGE).only(
+        'name', 'nature')
+
+
+class ReverseChannelView(NoPaginationListCustomAPIView):
+    """反向通道信息"""
+
+    serializer_class = serializers.ReverseChannelSerializer
+    queryset = ResourceInfo.objects.filter(
+        resource_type=ResourceInfo.ResourceType.REVERSE).only('name')
+
+
+class CarPassThroughView(ListCustomAPIView):
+    """道口车辆出入信息"""
+
+    serializer_class = serializers.CarPassThroughSerializer
+    queryset = PassageWayCarPassThrough.objects.all().order_by('-id')
+
+    def aggregate_data_process(self, aggregate_data):
+        """统计数据处理"""
+        data = OrderedDict()
+        data['enter_count'] = 0
+        data['exit_count'] = 0
+
+        for group in aggregate_data:
+            if group['direction'] == PassageWayCarPassThrough.DirectionType.ENTRANCE:
+                data['enter_count'] += group['count']
+            else:
+                data['exit_count'] += group['count']
+
+        current_count = data['enter_count'] - data['exit_count']
+        data['current_count'] = current_count if current_count > 0 else 0
+
+        return data
+
+    def get_aggregate_data_by_date(self, date):
+        """根据时间获取统计数据
+
+        根据日期进行过滤并根据出入方向进行分组查询
+
+        Args:
+            date: 统计时间
+
+        Returns:
+            aggregate_data: 统计数据
+        """
+        aggregate_data = PassageWayCarPassThrough.objects.values('direction').annotate(
+            count=Count('id')).filter(
+            passage_time__gte=date,
+            passage_time__lt=date + datetime.timedelta(days=1),
+        )
+
+        return aggregate_data
+
+    def get(self, request, *args, **kwargs):
+        """获取道口车辆信息"""
+        response = super().list(request, *args, **kwargs)
+
+        # 添加统计数据
+        aggregate_data = self.get_aggregate_data_by_date(datetime.datetime.now().date())
+        response.data['aggregate'] = self.aggregate_data_process(aggregate_data)
+
+        return response
+
+
+class PlacementView(NoPaginationListCustomAPIView):
+    """机位视图"""
+
+    serializer_class = serializers.PlacementSerializer
+    queryset = ResourceInfo.objects.filter(resource_type=ResourceInfo.ResourceType.PLACEMENT).only(
+        'name', 'status').prefetch_related('flights')
+
+
+class PlacementAlarmView(ListCustomAPIView):
+    """机位报警信息"""
+
+    serializer_class = serializers.PlacementAlarmSerializer
+    queryset = PlaceAlarmRecord.objects.all().order_by('-id').only(
+        'resource__name',
+        'event__id',
+        'event__alarm_time',
+        'event__event_name',
+    )
+
+
+class RunDayView(CustomGenericAPIView):
+    """获取运行天数"""
+
+    def get_database_create_time(self):
+        """获取数据库创建时间"""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'SELECT CREATE_TIME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='
+                f'"{config_parser.get("MYSQL", "MYSQL_NAME")}" AND TABLE_NAME="django_migrations";'
+            )
+
+            return cursor.fetchall()[0][0]
+
+    def get(self, request):
+        run_day = (datetime.datetime.now() - self.get_database_create_time()).days + 1
+        return self.success_response(data={'run_day': run_day})

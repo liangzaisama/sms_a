@@ -1,0 +1,63 @@
+from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
+
+from security_platform import ErrorType
+from security_platform.utils.permisssions import DepartmentLeaderPermission
+from security_platform.utils.views import CustomGenericAPIView
+from configurations.models import SystemConfig
+
+
+class GetVersionView(CustomGenericAPIView):
+    """查询版本号
+
+    需要跟rpm包的版本号一致
+    """
+    authentication_classes = ()
+    permission_classes = ()
+    versioning_class = None
+
+    def get(self, _):
+        """获取版本号"""
+        # int('a')
+        return self.success_response(data={'version': '2.2.10'})
+
+
+class ConfigListUpdateView(DepartmentLeaderPermission, CustomGenericAPIView):
+    """系统配置接口
+
+    get:查询
+    put:修改
+    """
+    def get(self, requests):
+        data = {config.config_key: config.config_value for config in SystemConfig.objects.all()}
+        return self.success_response(data=data)
+
+    def validate_config_value(self, key, value):
+        if key == SystemConfig.ConfigList.SECURITY_SPEED:
+            try:
+                value = int(value)
+            except (ValueError, TypeError):
+                self.validate_error(code=ErrorType.INVALID, param_name=SystemConfig.ConfigList.SECURITY_SPEED.label)
+
+            if value < SystemConfig.MIN_SECURITY_SPEED or value > SystemConfig.MAX_SECURITY_SPEED:
+                self.validate_error(
+                    external=True,
+                    code=ErrorType.MAX_VALUE,
+                    max_value=SystemConfig.MAX_SECURITY_SPEED,
+                    min_value=SystemConfig.MIN_SECURITY_SPEED,
+                    param_name=SystemConfig.ConfigList.SECURITY_SPEED.label
+                )
+
+    def put(self, requests):
+        with transaction.atomic():
+            for config_key, config_value in requests.data.items():
+                try:
+                    config = SystemConfig.objects.get(config_key=config_key)
+                except ObjectDoesNotExist:
+                    self.validate_error(errmsg=f'错误的系统配置参数:{config_key}')
+
+                self.validate_config_value(config_key, config_value)
+                config.config_value = config_value
+                config.save()
+
+        return self.success_response()

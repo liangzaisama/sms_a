@@ -1,0 +1,15 @@
+[Unit]
+Description=SMS Service
+After=network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+User=root
+Group=root
+ExecStart=/home/.virtualenvs/SMS/bin/python /home/OPS/sms_compile/programctl/main.py -s all
+ExecReload=/home/.virtualenvs/SMS/bin/python /home/OPS/sms_compile/programctl/main.py -r all
+ExecStop=/home/.virtualenvs/SMS/bin/python /home/OPS/sms_compile/programctl/main.py -t all
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

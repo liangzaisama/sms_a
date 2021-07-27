@@ -1,0 +1,212 @@
+"""子系统的报警相关消息业务逻辑处理
+
+GenericEventResource 通用的触发报警，确认报警，处置报警
+各系统子类可重写对应的函数来重写或修改业务逻辑
+"""
+from django.db import transaction
+
+from devices import models
+from websocket_ import ws_queue
+from exceptions import InvalidFiledError
+from utils import CreateUpdateLabelResource, time_format_conversion
+from security_platform.utils.commen import blank_get
+from events.models import AlarmEvent, DeviceAlarmEvent, DeviceAlarmEventCamera, DeviceAlarmEventPicture
+
+
+class GenericEventResource(CreateUpdateLabelResource):
+    """通用报警事件处理
+
+    Class Attributes:
+        model_class: 设备对应的模型类对象，用于数据库对象操作
+        system_code: 设备所属系统编码，根据系统编码的枚举类定义，用于获取设备系统类型字段
+    """
+
+    system_code = None
+    model_class = DeviceAlarmEvent
+
+    @property
+    def source(self):
+        """获取action对应的标签数据解析函数字典"""
+        return {
+            'ack': self.ack_label_info,
+            'deactive': self.deactive_label_info
+        }
+
+    def create_event_camera(self, event):
+        """报警事件关联摄像机生成器"""
+        for camera_data in self.label['camer_list']:
+            yield DeviceAlarmEventCamera(
+                event=event,
+                code=camera_data['camer_guid'],
+                preset=camera_data['camer_persetid']
+            )
+
+    def create_event_picture(self, event):
+        """报警事件关联图片生成器"""
+        picture_paths = self.label.get('picture_paths', [])
+        for picture_addr in picture_paths:
+            yield DeviceAlarmEventPicture(event=event, address=picture_addr)
+
+    def related_create(self, event):
+        event_cameras = DeviceAlarmEventCamera.objects.bulk_create(list(self.create_event_camera(event)))
+        event_pictures = DeviceAlarmEventPicture.objects.bulk_create(list(self.create_event_picture(event)))
+
+        return event_cameras, event_pictures
+
+    def create(self):
+        """创建事件及关联数据
+
+        创建数据包括：报警事件数据，报警事件关联摄像机数据，报警事件关联图片数据
+
+        Returns:
+            event：事件模型类对象
+        """
+        with transaction.atomic():
+            event = super().create()
+            related_obj = self.related_create(event)
+
+        ws_queue.put(event.ws_message)
+
+        return event, related_obj
+
+    def set_label_info(self):
+        """报警事件触发，数据标签设置"""
+        # self._label_info['event_name'] = self.label.get('event_name', f'{self.system_code.label}报警')
+        self._label_info['event_name'] = self.label['event_name']
+        self._label_info['event_code'] = DeviceAlarmEvent.generate_event_code()
+        self._label_info['alarm_time'] = time_format_conversion(self.label['event_time'])
+        self._label_info['area_code'] = blank_get(self.label, 'area_code')
+        self._label_info['floor_code'] = blank_get(self.label, 'floor_code')
+        self._label_info['priority'] = self.label['priority']
+        self._label_info['event_state'] = DeviceAlarmEvent.EventState.UNCONFIRMED
+        self._label_info['event_description'] = self.label['event_message']
+        self._label_info['subsystem_event_id'] = self.label['event_code']
+        self._label_info['alarm_type'] = self.label['event_type']
+        self._label_info['event_type'] = AlarmEvent.EventType.DEVICE
+        self._label_info['alarm_device_code'] = self.label['device_code']
+        self._label_info['belong_system'] = self.system_code.label
+
+    def validate_misrepresent(self):
+        """是否误报字段校验
+
+        Returns:
+            is_misrepresent: 是否误报的布尔值
+
+        Raises：
+            InvalidFiledError: 字段校验失败时抛出异常
+        """
+        try:
+            is_misrepresent = int(self.label["is_misrepresent"])
+        except (ValueError, TypeError):
+            raise InvalidFiledError(f'无效的误报取值类型:{self.label["is_misrepresent"]}')
+
+        if is_misrepresent not in (0, 1):
+            raise InvalidFiledError(f'无效的误报取值范围:{self.label["is_misrepresent"]}')
+
+        return bool(is_misrepresent)
+
+    def validate_event(self, **kwargs):
+        """设备编码校验
+
+        Args:
+            **kwargs: 额外数据过滤字典
+
+        Returns:
+            event_instance: 事件模型类对象
+
+        Raises：
+            InvalidFiledError: 字段校验失败时抛出异常
+        """
+        try:
+            event_instance = DeviceAlarmEvent.objects.only('id').get(
+                subsystem_event_id=self.label['event_code'],
+                belong_system=self.system_code.label,
+                **kwargs
+            )
+        except DeviceAlarmEvent.DoesNotExist:
+            raise InvalidFiledError(f'无效的事件编码:{self.label["event_code"]}')
+
+        return event_instance
+
+    def ack_label_info(self):
+        """报警事件确认，数据标签设置"""
+        self.validate_event(event_state=DeviceAlarmEvent.EventState.UNCONFIRMED)
+        is_misrepresent = self.validate_misrepresent()
+
+        if is_misrepresent:
+            self._label_info['event_state'] = DeviceAlarmEvent.EventState.RELIEVED
+        else:
+            self._label_info['event_state'] = DeviceAlarmEvent.EventState.UNDISPOSED
+
+        self._label_info['subsystem_event_id'] = self.label['event_code']
+        self._label_info['is_misrepresent'] = is_misrepresent
+        self._label_info['acknowledged_time'] = time_format_conversion(self.label['ack_time'])
+        self._label_info['acknowledged_opinion'] = self.label['ack_message']
+        self._label_info['acknowledged_user'] = self.label.get('ack_user', self.system_code.label)
+
+    def deactive_label_info(self):
+        """报警事件处置，数据标签设置"""
+        self.validate_event(event_state=DeviceAlarmEvent.EventState.UNDISPOSED)
+
+        self._label_info['subsystem_event_id'] = self.label['event_code']
+        self._label_info['dispose_time'] = time_format_conversion(self.label['deactive_time'])
+        self._label_info['dispose_opinion'] = self.label['deactive_message']
+        self._label_info['dispose_user'] = self.label.get('deactive_user', self.system_code.label)
+        self._label_info['event_state'] = DeviceAlarmEvent.EventState.RELIEVED
+
+    def get_object_kwargs(self):
+        """查询报警事件数据时的过滤条件"""
+        return {'subsystem_event_id': self._label_info['subsystem_event_id']}
+
+
+class MaintenanceEventResource(GenericEventResource):
+    """围界报警事件"""
+
+    system_code = models.EntranceDevice.BelongSystem.MAINTENANCE
+
+    # def set_label_info(self):
+    #     super().set_label_info()
+    #
+    #     self._label_info['event_name'] = self.label.get('event_name', '围界报警')
+    #     self._label_info['alarm_person_name'] = '围界系统'
+    #     self._label_info['belong_system'] = models.EntranceDevice.BelongSystem.maintenance
+    #     self._label_info['event_name'] = '围界报警'
+    #     self._label_info['priority'] = self.label['level']
+    #     self._label_info['alarm_time'] = time_format_conversion(self.label['origin_time'])
+    #     self._label_info['alarm_person_name'] = '围界系统'
+    #     self._label_info['source_id'] = self.label['id']
+    #     self._label_info['alarm_device_code'] = self.label['detector']
+    #     self._label_info['belong_system'] = models.MaintenanceDevice.BelongSystem.maintenance
+    #     self._label_info['area'] = AreaInfo.objects.get(area_code=self.label['area_id'])
+    #     self._label_info['alarm_camera_code'] = self.label['camer_list']['camer_guid']
+    #     self._label_info['source_data'] = self.label['info']
+    #     self._label_info['alarm_reason'] = self.label['pc']
+
+
+class EntranceEventResource(GenericEventResource):
+    """门禁报警事件"""
+
+    system_code = models.EntranceDevice.BelongSystem.ENTRANCE
+
+    def set_label_info(self):
+        super().set_label_info()
+        # 门禁通行证编号
+        self._label_info['pass_id'] = blank_get(self.label, 'passcard_id')
+
+
+class FireEventResource(GenericEventResource):
+    """消防报警事件"""
+
+    system_code = models.EntranceDevice.BelongSystem.FIRE
+
+
+class ConcealEventResource(GenericEventResource):
+    """隐蔽报警事件"""
+
+    system_code = models.EntranceDevice.BelongSystem.CONCEAL
+
+
+class PassageWayEventResource(GenericEventResource):
+    """道口报警事件"""
+
+    system_code = models.EntranceDevice.BelongSystem.PASSAGE

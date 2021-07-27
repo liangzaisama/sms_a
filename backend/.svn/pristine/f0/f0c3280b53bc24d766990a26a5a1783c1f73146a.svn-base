@@ -1,0 +1,615 @@
+from datetime import datetime
+
+from django.db import transaction
+from rest_framework import serializers
+from rest_framework.permissions import IsAdminUser
+
+from users.models import Department, User
+from security_platform import ErrorType, RET
+from security_platform.utils.exceptions import PermissionsError
+from security_platform.utils.permisssions import IsLeaderUser
+from security_platform.utils.serializer import CustomModelSerializer
+from devices.models import DeviceInfo, DeviceGroup, DeviceLabel, DeviceMaintenanceRecords, DeviceStateHistory
+
+
+class DeviceBasicSerializer(CustomModelSerializer):
+    """基础设备信息序列化"""
+
+    class Meta:
+        model = DeviceInfo
+        fields = ['device_id', 'device_name', 'device_type', 'device_code']
+        extra_kwargs = {'device_id': {'source': 'id', 'read_only': True}}
+
+
+class DeviceStatusSerializer(DeviceBasicSerializer):
+    """设备状态设备信息序列化"""
+
+    class Meta(DeviceBasicSerializer.Meta):
+        fields = DeviceBasicSerializer.Meta.fields + ['device_state', 'maintenance', 'frequent_maintenance']
+
+
+class DeviceInfoSerializer(DeviceBasicSerializer):
+    """设备状态完整信息序列化"""
+
+    # groups = serializers.SerializerMethodField(label='设备组信息')
+    # labels = serializers.SerializerMethodField(label='标签信息')
+
+    class Meta(DeviceBasicSerializer.Meta):
+        fields = DeviceBasicSerializer.Meta.fields + ['ipv4', 'area_code', 'port', 'switches']
+
+        # def get_groups(self, device):
+        #     return device.group_set.filter(user=self.context['request'].user).values_list('name', flat=True)
+        #
+        # def get_labels(self, device):
+        #     return device.label_set.filter(user=self.context['request'].user).values_list('name', flat=True)
+
+
+class DeviceQueryParamSerializer(DeviceBasicSerializer):
+    """查询参数反序列化"""
+
+    device_code = serializers.CharField(label='设备编码', max_length=200)
+    scene = serializers.ChoiceField(choices=DeviceInfo.Scene.values)
+    group_id = serializers.IntegerField(label='设备组ID')
+    label_id = serializers.IntegerField(label='标签ID')
+    exclude_department_id = serializers.IntegerField(label='部门id')
+    exclude_user_id = serializers.IntegerField(label='用户id')
+
+    class Meta(DeviceBasicSerializer.Meta):
+        fields = DeviceBasicSerializer.Meta.fields + [
+            'device_state',
+            'scene',
+            'group_id',
+            'label_id',
+            'exclude_department_id',
+            'exclude_user_id',
+        ]
+
+    def check_permissions(self, has_permission):
+        """判断是否拥有权限，无权限则报错"""
+        if not has_permission:
+            raise PermissionsError()
+
+    def validate_exclude_department_id(self, exclude_department_id):
+        """校验部门id"""
+        if not Department.objects.filter(id=exclude_department_id).exists():
+            self.param_error(code=ErrorType.DOES_NOT_EXIST, model_name='部门')
+
+        self.check_permissions(IsAdminUser().has_permission(self.context['request'], self.context['view']))
+
+        return exclude_department_id
+
+    def validate_exclude_user_id(self, exclude_user_id):
+        """校验用户id"""
+        try:
+            user = User.objects.get(id=exclude_user_id)
+        except User.DoesNotExist:
+            self.param_error(code=ErrorType.DOES_NOT_EXIST, model_name='用户')
+        else:
+            # 参数权限校验
+            request = self.context['request']
+            view = self.context['view']
+
+            user_permission = IsLeaderUser()
+            self.check_permissions(user_permission.has_permission(request, view))
+            self.check_permissions(user_permission.has_object_permission(request, view, user))
+
+        return exclude_user_id
+
+    def validate_group_id(self, group_id):
+        """校验设备组"""
+        if not DeviceGroup.objects.filter(id=group_id, user=self.context['request'].user).exists():
+            self.param_error(code=ErrorType.DOES_NOT_EXIST, model_name='设备组')
+
+        return group_id
+
+    def validate_label_id(self, label_id):
+        """校验设备标签"""
+        if not DeviceLabel.objects.filter(id=label_id, user=self.context['request'].user).exists():
+            self.param_error(code=ErrorType.DOES_NOT_EXIST, model_name='设备标签')
+
+        return label_id
+
+    def validate(self, attrs):
+        """其他参数校验"""
+        if 'scene' not in attrs:
+            self.param_error(code=ErrorType.REQUIRED, param_name='scene')
+
+        return attrs
+
+
+class DeviceLabelSerializer(CustomModelSerializer):
+    """设备标签序列化器"""
+
+    devices = serializers.ListField(label='设备组设备', write_only=True, child=serializers.IntegerField())
+
+    class Meta:
+        model = DeviceLabel
+        fields = (
+            'device_label_id', 'device_label_name', 'content', 'keywords', 'color', 'user_id', 'devices'
+        )
+        extra_kwargs = {
+            'device_label_id': {
+                'source': 'id'
+            },
+            'device_label_name': {
+                'source': 'name'
+            },
+            'user_id': {
+                'source': 'user',
+                'required': False,
+                'allow_null': True,
+            },
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+
+            if key == 'user_id':
+                # 补充用户名字段
+                data['username'] = instance.user.username if instance.user else ''
+
+                if value != self.context["request"].user.id:
+                    data.clear()
+
+        return data
+
+    def create(self, validated_data):
+        """标签添加设备"""
+
+        devices = validated_data.get('devices')
+
+        if not devices:
+            self.param_error(code=ErrorType.BLANK, param_name='devices')
+
+        # 获取添加设备列表
+        devices_data = DeviceInfo.objects.only('id').filter(id__in=devices)
+
+        # 验证参数
+        if len(devices) != devices_data.count():
+            self.param_error(param_name='devices')
+
+        # 验证设备是否属于用户
+        for device_info in devices_data:
+            if not device_info.is_belong_user(self.context["request"].user):
+                self.param_error(code=ErrorType.ID_LIST, param_name='devices', field_name='设备ID')
+
+        return super().create(validated_data)
+
+    def validate_device_label_name(self, device_label_name):
+        """校验标签名称重复"""
+        if DeviceLabel.objects.filter(name=device_label_name, user=self.context["request"].user).exists():
+            self.param_error(code=ErrorType.UNIQUE, param_name=device_label_name, errcode=RET.EXPARAMERR)
+
+        return device_label_name
+
+
+class DeviceLabelDetachmentsSerializer(CustomModelSerializer):
+    """设备标签移除设备序列化器"""
+
+    devices = serializers.ListField(label='设备组设备', write_only=True, child=serializers.IntegerField())
+
+    class Meta:
+        model = DeviceLabel
+        fields = ('devices',)
+        extra_kwargs = {
+            'devices': {
+                'required': True,
+            },
+        }
+
+    # noinspection PyUnresolvedReferences
+    def update(self, instance, validated_data):
+        """标签移除设备"""
+
+        devices = validated_data.get('devices')
+
+        if not devices:
+            self.param_error(code=ErrorType.BLANK, param_name='devices')
+
+        # 获取移除设备列表
+        devices_data = DeviceInfo.objects.only('id').filter(id__in=devices)
+        label_devices = instance.devices.all()
+        # 验证参数
+        if len(devices) != devices_data.count():
+            self.param_error(param_name='devices')
+
+        # 验证设备是否属于用户
+        for device_info in devices_data:
+            if not device_info.is_belong_user(self.context["request"].user):
+                self.param_error(code=ErrorType.ID_LIST, param_name='devices', field_name='设备ID')
+            if device_info not in label_devices:
+                self.param_error(errcode=RET.EXPARAMERR, code=ErrorType.ID_LIST_DEL,
+                                 param_name=device_info.device_name, field_name=DeviceLabel._meta.verbose_name)
+
+        # 移除设备列表
+        instance.devices.remove(*devices_data)
+
+        instance = super().update(instance, validated_data={})
+
+        return instance
+
+
+class DeviceGroupSerializer(CustomModelSerializer):
+    """设备分组序列化器"""
+    devices = serializers.ListField(label='设备组设备', write_only=True, child=serializers.IntegerField())
+
+    class Meta:
+        model = DeviceGroup
+        fields = (
+            'device_group_id', 'device_group_name', 'description', 'user_id', 'devices'
+        )
+        extra_kwargs = {
+            'device_group_id': {
+                'source': 'id',
+            },
+            'device_group_name': {
+                'source': 'name'
+            },
+            'user_id': {
+                'source': 'user',
+                'required': False,
+                'allow_null': True,
+            },
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+
+            if key == 'user_id':
+                # 补充用户名字段
+                data['username'] = instance.user.username if instance.user else ''
+
+                if value != self.context["request"].user.id:
+                    data.clear()
+
+        return data
+
+    def create(self, validated_data):
+        """设备组添加设备"""
+
+        devices = validated_data.get('devices')
+
+        if not devices:
+            self.param_error(code=ErrorType.BLANK, param_name='devices')
+
+        # 获取添加设备列表
+        devices_data = DeviceInfo.objects.only('id').filter(id__in=devices)
+
+        # 验证参数
+        if len(devices) != devices_data.count():
+            self.param_error(param_name='devices')
+
+        # 验证设备是否属于用户
+        for device_info in devices_data:
+            if not device_info.is_belong_user(self.context["request"].user):
+                self.param_error(code=ErrorType.ID_LIST, param_name='devices', field_name='设备ID')
+            # 验证设备组和设备是否一对一
+            if DeviceGroup.objects.filter(user=self.context["request"].user, devices=device_info).exists():
+                self.param_error(errcode=RET.EXPARAMERR, code=ErrorType.ID_LIST_ADD,
+                                 param_name=device_info.device_name, field_name=DeviceGroup._meta.verbose_name)
+
+        validated_data['user'] = self.context["request"].user
+
+        return super().create(validated_data)
+
+    def validate_device_group_name(self, device_group_name):
+        """校验设备组名称重复"""
+        if DeviceGroup.objects.filter(name=device_group_name, user=self.context["request"].user).exists():
+            self.param_error(code=ErrorType.UNIQUE, param_name=device_group_name, errcode=RET.EXPARAMERR)
+
+        return device_group_name
+
+
+class DeviceGroupDetachmentsSerializer(CustomModelSerializer):
+    """设备分组移除设备序列化器"""
+    devices = serializers.ListField(label='设备组设备', write_only=True, child=serializers.IntegerField())
+
+    class Meta:
+        model = DeviceGroup
+        fields = ('devices',)
+        extra_kwargs = {
+            'devices': {
+                'required': True,
+            },
+        }
+
+    # noinspection PyUnresolvedReferences
+    def update(self, instance, validated_data):
+        """设备组移除设备"""
+
+        devices = validated_data.get('devices')
+
+        if not devices:
+            self.param_error(code=ErrorType.BLANK, param_name='devices')
+
+        # 获取移除设备列表
+        devices_data = DeviceInfo.objects.only('id').filter(id__in=devices)
+        group_devices = instance.devices.all()
+        # 验证参数
+        if len(devices) != devices_data.count():
+            self.param_error(param_name='devices')
+
+        # 验证设备是否属于用户
+        for device_info in devices_data:
+            if not device_info.is_belong_user(self.context["request"].user):
+                self.param_error(code=ErrorType.ID_LIST, param_name='devices', field_name='设备ID')
+            if device_info not in group_devices:
+                self.param_error(errcode=RET.EXPARAMERR, code=ErrorType.ID_LIST_DEL,
+                                 param_name=device_info.device_name, field_name=DeviceGroup._meta.verbose_name)
+
+        # 移除设备列表
+        instance.devices.remove(*devices_data)
+
+        instance = super().update(instance, validated_data={})
+
+        return instance
+
+
+class DeviceBasicsSerializer(CustomModelSerializer):
+    """设备基础信息序列化器"""
+
+    group_set = DeviceGroupSerializer(label='设备组列表', many=True, required=False)
+    label_set = DeviceLabelSerializer(label='设备标签列表', many=True, required=False)
+
+    class Meta:
+        model = DeviceInfo
+        fields = (
+            'device_id', 'device_name', 'device_type', 'device_code', 'gis_field', 'switches', 'device_state',
+            'ipv4', 'port', 'maintenance', 'area_code', 'frequent_maintenance', 'trouble_message', 'trouble_time',
+            'group_set', 'label_set',
+        )
+
+        extra_kwargs = {
+            'device_id': {
+                'source': 'id',
+            },
+            'device_name': {
+                'allow_blank': True,
+                'required': False
+            },
+            'device_code': {
+                'allow_blank': True,
+                'required': False
+            },
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+
+            if key == 'group_set':
+                # 去除空值
+                new_value = [group_info for group_info in value if group_info]
+                data[key] = new_value
+
+            if key == 'label_set':
+                # 去除空值
+                new_value = [label_info for label_info in value if label_info]
+                data[key] = new_value
+
+        return data
+
+
+class DeviceVerificationSerializer(CustomModelSerializer):
+    """审核设备更新序列化器"""
+
+    class Meta:
+        model = DeviceInfo
+        fields = ('device_state',)
+        extra_kwargs = {'device_state': {'required': False}}
+
+    def update(self, instance, validated_data):
+        """设备状态变更  同时记录变更信息"""
+        instance = self.validate_device_state(instance)
+        with transaction.atomic():
+            now_time = datetime.now()
+            device_state = DeviceInfo.DeviceState.NORMAL
+
+            instance.device_state = device_state
+            instance.update_time = now_time
+
+            # 设备状态变更
+            instance.save(update_fields=['device_state', 'update_time'])
+
+            # 设备状态变更记录
+            DeviceStateHistory.objects.create(
+                device_info=instance,
+                device_state=device_state,
+                state_change_time=now_time
+            )
+
+        return instance
+
+    def validate_device_state(self, instance):
+        """校验设备状态是否为故障恢复"""
+        if instance.device_state != DeviceInfo.DeviceState.TROUBLE_OFF:
+            self.param_error(param_name=instance.device_state, code=ErrorType.DEVICE_STATE)
+
+        return instance
+
+
+class DeviceGISSerializer(CustomModelSerializer):
+    """设备点位更新序列化器"""
+
+    class Meta:
+        model = DeviceInfo
+        fields = ('gis_field',)
+        extra_kwargs = {'gis_field': {'required': True}}
+
+
+class DeviceGroupLabelSerializer(CustomModelSerializer):
+    """设备基础信息更新序列化器"""
+    group_ids = serializers.ListField(label='设备组只用于反序列化', write_only=True, child=serializers.IntegerField())
+    label_ids = serializers.ListField(label='设备标签只用于反序列化', write_only=True, child=serializers.IntegerField())
+
+    class Meta:
+        model = DeviceInfo
+        fields = ('group_ids', 'label_ids')
+        extra_kwargs = {'group_ids': {'required': True}, 'label_ids': {'required': True}}
+
+    def validate_group_ids(self, group_ids):
+        """校验设备组id列表"""
+
+        update_group_queryset = DeviceGroup.objects.filter(id__in=group_ids)
+
+        if len(group_ids) > 1:
+            self.param_error(param_name='group_ids')
+
+        if len(group_ids) != update_group_queryset.count():
+            self.param_error(param_name='group_ids')
+
+        for group in update_group_queryset:
+            if group.user != self.context["request"].user:
+                self.param_error(code=ErrorType.ID_LIST, param_name='group_ids', field_name='设备组ID')
+
+        return group_ids
+
+    def validate_label_ids(self, label_ids):
+        """校验设备标签id列表"""
+
+        device_label_queryset = DeviceLabel.objects.filter(id__in=label_ids)
+
+        if len(label_ids) != device_label_queryset.count():
+            self.param_error(param_name='label_ids')
+
+        for label in device_label_queryset:
+            if label.user != self.context["request"].user:
+                self.param_error(code=ErrorType.ID_LIST, param_name='label_ids', field_name='标签ID')
+
+        return label_ids
+
+    # noinspection PyUnresolvedReferences
+    def update(self, instance, validated_data):
+        group_ids = validated_data.get('group_ids')
+        label_ids = validated_data.get('label_ids')
+
+        current_group = instance.group_set.all().filter(user=self.context["request"].user)
+        current_label = instance.label_set.all().filter(user=self.context["request"].user)
+        with transaction.atomic():
+            # 更新设备组关系
+            if current_group:
+                instance.group_set.remove(*current_group)
+            instance.group_set.add(*group_ids)
+
+            # 更新设备标签关系
+            if current_label:
+                instance.label_set.remove(*current_label)
+            instance.label_set.add(*label_ids)
+
+        instance = super().update(instance, validated_data)
+
+        return instance
+
+
+class DeviceMaintenanceRecordsSerializer(CustomModelSerializer):
+    """设备设备维修记录序列化器"""
+    device_name = serializers.CharField(label='设备名称只用于序列化', required=False)
+    device_code = serializers.CharField(label='设备编码只用于序列化', required=False)
+
+    class Meta:
+        model = DeviceMaintenanceRecords
+        fields = (
+            'maintenance_record_id', 'device_id', 'is_change_device', 'operate_time', 'operate_person',
+            'operate_records', 'note', 'image', 'device_name', 'device_code'
+        )
+
+        extra_kwargs = {
+            'maintenance_record_id': {
+                'source': 'id',
+            },
+            'device_id': {
+                'source': 'device_info',
+            },
+
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+
+            if key == 'device_id':
+                # 补充设备相关字段
+                data['device_name'] = instance.device_info.device_name if instance.device_info else ''
+                data['device_code'] = instance.device_info.device_code if instance.device_info else ''
+                data['trouble_message'] = instance.device_info.trouble_message if instance.device_info else ''
+
+            elif key.find('operate_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+    def create(self, validated_data):
+        """新增维修记录"""
+        image = validated_data.get('image')
+        if not image:
+            self.param_error(code=ErrorType.BLANK, param_name='image')
+
+        # 设备维修次数加1
+        device = validated_data.get('device_info')
+        device.maintenance += 1
+        device.save()
+
+        return super().create(validated_data)
+
+
+class DeviceMaintenanceRecordsListSerializer(CustomModelSerializer):
+    """设备设备维修记录列表序列化器"""
+    device_name = serializers.CharField(label='设备名称只用于序列化', required=False)
+    device_code = serializers.CharField(label='设备编码只用于序列化', required=False)
+
+    class Meta:
+        model = DeviceMaintenanceRecords
+        fields = (
+            'maintenance_record_id', 'device_id', 'is_change_device', 'operate_time', 'operate_person',
+            'operate_records', 'note', 'image', 'device_name', 'device_code'
+        )
+
+        extra_kwargs = {
+            'maintenance_record_id': {
+                'source': 'id',
+            },
+            'device_id': {
+                'source': 'device_info',
+            },
+            'operate_person': {
+                'allow_blank': True,
+            },
+
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+
+            if key == 'device_id':
+                # 补充设备相关字段
+                data['device_name'] = instance.device_info.device_name if instance.device_info else ''
+                data['device_code'] = instance.device_info.device_code if instance.device_info else ''
+                data['trouble_message'] = instance.device_info.trouble_message if instance.device_info else ''
+
+            elif key.find('operate_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data

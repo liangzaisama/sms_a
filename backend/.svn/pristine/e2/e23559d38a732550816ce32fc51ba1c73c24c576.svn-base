@@ -1,0 +1,98 @@
+import time
+from collections import OrderedDict
+
+from django.db import models
+
+from security_platform import IntegerChoices
+from security_platform.utils.models import BaseModel
+
+
+class WatchAddressBook(BaseModel):
+    """值班通讯录"""
+
+    department_name = models.CharField('部门名称', max_length=20)
+    staff_name = models.CharField('值班人员', max_length=10)
+    contact_mobile = models.CharField('联系电话', max_length=20)
+    duty_date = models.DateField('值班日期')
+
+    class Meta:
+        verbose_name = '值班通讯录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_watch_address_book'
+
+
+class EntranceAccessRecords(BaseModel):
+    """门禁通行记录"""
+
+    class InOutChoice(IntegerChoices):
+        IN = 0, '进'
+        OUT = 1, '出'
+
+    entrance_punch_code = models.CharField(max_length=40, verbose_name='门禁刷卡编码')
+    device_code = models.CharField(max_length=200, verbose_name='门禁设备编码')
+    device_name = models.CharField(verbose_name='门禁设备名称', max_length=60)
+    record_time = models.DateTimeField(verbose_name='门禁刷卡时间')
+    card_no = models.CharField(max_length=30, verbose_name='卡号')
+    holder = models.CharField(max_length=32, verbose_name='持卡人姓名')
+    department = models.CharField(max_length=64, verbose_name='部门名称', blank=True)
+    jobs = models.CharField(max_length=64, verbose_name='岗位', blank=True)
+    code_name = models.CharField(max_length=64, verbose_name='门禁代号', blank=True)
+    in_out = models.SmallIntegerField(choices=InOutChoice.choices, verbose_name='进出方向')
+    region_id = models.CharField(max_length=10, verbose_name='刷卡区域id')
+
+    WS_URL_SUFFIX = 'entrance_access'
+
+    class Meta:
+        verbose_name = '门禁通行记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_entrance_access_records'
+
+    @property
+    def ws_message(self):
+        """实时排队websocket消息构造"""
+        message = OrderedDict()
+        message['entrance_punch_code'] = self.entrance_punch_code
+        message['device_code'] = self.device_code
+        message['device_name'] = self.device_name
+        message['record_time'] = self.record_time
+        message['card_no'] = self.card_no
+        message['holder'] = self.holder
+        message['department'] = self.department
+        message['jobs'] = self.jobs
+        message['code_name'] = self.code_name
+        message['in_out'] = self.in_out
+        message['region_id'] = self.region_id
+
+        return message
+
+
+# 三检要求
+class PlanInfo(BaseModel):
+    """预案信息"""
+    plan_name = models.CharField('预案名称', max_length=20, blank=False)
+    plan_code = models.CharField('预案编码', max_length=20, blank=False)
+    keywords = models.CharField('关键字', max_length=50, blank=False)
+    description = models.TextField('预案说明', blank=True)
+    gis_field = models.TextField('gis点位信息', blank=False)
+    doc_file = models.FileField('文件地址', upload_to='plan_file', blank=False)
+
+    @classmethod
+    def generate_plan_code(cls):
+        """生成预案ID
+
+        根据P+时间戳保留4位小数拼接字段串
+
+        Returns:
+            event_code: 预案ID
+        """
+        return 'P{0}'.format(str(round(time.time(), 4)).replace('.', ''))
+
+    class Meta:
+        verbose_name = '预案信息'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_plan_info'
+
+    def __str__(self):
+        return self.plan_name
+
+

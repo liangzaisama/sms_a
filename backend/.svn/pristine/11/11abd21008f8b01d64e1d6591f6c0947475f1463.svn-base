@@ -1,0 +1,342 @@
+"""态势相关模型类
+
+1、航站楼内的资源表
+航站楼出入口、值机柜台、安检口、安检大厅、登机口、反向通道、行李转盘
+
+2、视频分析的实时结果及报警消息
+实时消息包括（数据来源视频分析系统）：人数统计、密度、排队、实时抓拍
+报警消息包括（数据来源视频监控系统）：行为识别报警、布控报警、排队阀值报警、密度阀值报警、
+
+问题1：安保平台也有内置的密度和排队阀值达到报警，视频监控也有这块的功能，是否重复了？
+安保平台暂时去掉该配置
+
+问题2：视频分析的报警调用webapi的接口触发报警，然后杨工那边再把报警消息给我，调用接口的时候缺少报警相关的信息
+是不是安保平台可以直接从视频分析的MQ报警里面取报警信息，但是这样需要安保平台内部产生事件，事件处理流程就跟视频监控客户端没关系了
+需要安保平台人员去处理
+
+3、航班系统消息及道口系统消息
+道口车辆出入信息
+航班相关信息
+"""
+from django.db import models
+
+from security_platform.utils.models import BaseModel
+from security_platform import TextChoices, IntegerChoices
+
+
+class FlightInfo(BaseModel):
+    """航班基础信息"""
+
+    class FlightStatus(IntegerChoices):
+        INIT = 0, '初始状态'
+
+        # 出港的
+        START_CHECK = 1, '开始值机'
+        END_CHECK = 2, '截止值机'
+        START_BOARDING = 3, '开始登机'
+        END_BOARDING = 4, '结束登机'
+        TAKE_OFF = 5, '本站起飞'
+
+        # 入港
+        BEFORE_TAKE_OFF = 6, '前站起飞'
+        ARRIVE = 7, '到达本站'
+
+        # 异常状态
+        CANCEL = 8, '取消'
+
+    class PlaceStatus(IntegerChoices):
+        INIT = 0, '初始状态'
+        ENTER = 1, '已入位'
+        EXIT = 2, '已离位'
+
+    fl_id = models.CharField('航班唯一标示', unique=True, max_length=10)
+    af_id = models.CharField('关联航班id', max_length=10, null=True, blank=True)
+    flight_status = models.SmallIntegerField('航班状态', choices=FlightStatus.choices, default=0)
+    place_status = models.SmallIntegerField('机位入离状态', choices=PlaceStatus.choices, default=0)
+    company = models.CharField('航空公司标识', max_length=10)
+    flight_number = models.CharField('航班号', max_length=20)
+    execution_date = models.DateField('航班执行日期(进港降落，出港起飞)')
+    vip_count = models.IntegerField('vip人数', default=0)
+    flight_type = models.CharField('航班类型', max_length=10, null=True, blank=True)
+    arrival_departure_flag = models.CharField('进出港标志（D-出港、A-进港）', max_length=10)
+    flight_property = models.CharField('航班属性（国际、国内、地区、混合）', max_length=10)
+    takeoff_place = models.CharField('出发地', max_length=10, blank=True)
+    destination_place = models.CharField('目的地', max_length=10, blank=True)
+    takeoff_iata = models.CharField('起飞航站（IATA码）', max_length=10, blank=True)
+    destination_iata = models.CharField('目的航站（IATA码）', max_length=10, blank=True)
+    terminal_info = models.CharField('国内航站楼编号', max_length=10)
+    inter_terminal_info = models.CharField('国际航站楼编号', max_length=10, null=True, blank=True)
+    plan_takeoff = models.DateTimeField('计划起飞时间', null=True, blank=True)
+    plan_arrival = models.DateTimeField('计划到达时间', null=True, blank=True)
+    estimate_takeoff = models.DateTimeField('预计起飞时间', null=True, blank=True)
+    estimate_arrival = models.DateTimeField('预计到达时间', null=True, blank=True)
+    actual_takeoff = models.DateTimeField('实际起飞时间', null=True, blank=True)
+    actual_arrive = models.DateTimeField('实际到达时间', null=True, blank=True)
+    flight_state = models.CharField('航班状态（航班状态编码）', max_length=10, null=True, blank=True)
+    stopover_iata = models.CharField('经停站（多个用逗号隔开）', max_length=20, null=True, blank=True)
+    flight_number_share = models.CharField('共享航班号（多个用逗号隔开）', max_length=50, null=True, blank=True)
+    exception_status = models.CharField('异常状态', max_length=10, null=True, blank=True)
+    exception_reason_father = models.CharField('异常原因父类', max_length=10, null=True, blank=True)
+    exception_reason_son = models.CharField('异常原因子类', max_length=10, null=True, blank=True)
+    runway = models.CharField('飞机跑道', max_length=10, null=True, blank=True)
+    turntable_code = models.CharField(default=0, verbose_name='转盘号', max_length=10)
+
+    class Meta:
+        verbose_name = '航班信息'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_flight_info'
+
+    def __str__(self):
+        return self.flight_number
+
+
+# class FlightGate:
+#     """航班使用登机门"""
+#
+#     gate_no = models.SmallIntegerField('登机门编号', max_length=10)
+#     gate_id = models.CharField('登机门唯一标示', max_length=10)
+#     gate_property = models.CharField('登机门属性', max_length=10)
+#     plan_start_time = models.DateTimeField('预计开始使用时间', null=True)
+#     plan_end_time = models.DateTimeField('预计结束使用时间', null=True)
+#     actual_start_time = models.DateTimeField('实际开始使用时间', null=True)
+#     actual_end_time = models.DateTimeField('实际结束使用时间', null=True)
+#     terminal_no = models.CharField('所属航站楼编号', max_length=10)
+
+
+# class FlightBaggageTurntable:
+#     """航班使用行李转盘提取"""
+#
+#     baggage_no = models.SmallIntegerField('行李转盘序号', max_length=10)
+#     baggage_id = models.CharField('行李转盘编号唯一标示', max_length=10)
+#     baggage_code = models.CharField('行李转盘编号编号', max_length=10)
+#     baggage_level = models.CharField('行李转盘等级', max_length=10)
+#     baggage_property = models.CharField('行李转盘属性', max_length=10)
+#     plan_start_time = models.DateTimeField('预计开始使用时间', null=True)
+#     plan_end_time = models.DateTimeField('预计结束使用时间', null=True)
+#     actual_start_time = models.DateTimeField('实际开始使用时间', null=True)
+#     actual_end_time = models.DateTimeField('实际结束使用时间', null=True)
+#     first_time = models.DateTimeField('第一件行李放置时间', null=True)
+#     last_time = models.DateTimeField('最后一件行李离开时间', null=True)
+#     terminal_no = models.CharField('所属航站楼编号', max_length=10, null=True)
+#     arrival_no = models.CharField('到达出口号', max_length=10, null=True)
+
+
+# class FlightBaggageChute:
+#     """航班使用行李滑槽"""
+#
+#     chute_no = models.SmallIntegerField('行李滑槽序号', max_length=10)
+#     chute_id = models.CharField('行李滑槽编号唯一标示', max_length=10)
+#     chute_code = models.CharField('行李滑槽编号编号号', max_length=10)
+#     chute_level = models.CharField('行李滑槽等级', max_length=10)
+#     chute_property = models.CharField('行李转盘属性', max_length=10)
+#     plan_start_time = models.DateTimeField('预计开始使用时间', null=True)
+#     plan_end_time = models.DateTimeField('预计结束使用时间', null=True)
+#     actual_start_time = models.DateTimeField('实际开始使用时间', null=True)
+#     actual_end_time = models.DateTimeField('实际结束使用时间', null=True)
+#     terminal_no = models.CharField('所属航站楼编号', max_length=10, null=True)
+#     arrival_no = models.CharField('到达出口号', max_length=10, null=True)
+
+
+# class FlightPosition:
+#     """航班机位信息"""
+#
+#     position_no = models.SmallIntegerField('机位序号', max_length=10)
+#     position_code = models.CharField('机位编号', max_length=10)
+#     plan_start_time = models.DateTimeField('预计开始使用时间', null=True)
+#     plan_end_time = models.DateTimeField('预计结束使用时间', null=True)
+#     actual_start_time = models.DateTimeField('实际开始使用时间', null=True)
+#     actual_end_time = models.DateTimeField('实际结束使用时间', null=True)
+#     terminal_no = models.CharField('所属航站楼编号', max_length=10, null=True)
+#     position_mark = models.CharField('停放机位标示(Y在，空不在)', max_length=10, null=True)
+
+
+class FlightCompany(models.Model):
+    """航空公司"""
+
+    second_code = models.CharField('航空公司二字码', unique=True, max_length=5)
+    three_code = models.CharField('航空公司三字码', null=True, max_length=5)
+    property = models.CharField('航空公司属性', null=True, max_length=5)
+    ch_description = models.CharField('中文描述', null=True, max_length=40)
+    inter_description = models.CharField('英文描述', null=True, max_length=40)
+    country_code = models.CharField('国家代码', null=True, max_length=10)
+    terminal = models.CharField('所在航站楼', null=True, max_length=10)
+    company_group = models.CharField('航空公司联盟', null=True, max_length=25)
+
+    class Meta:
+        verbose_name = '航空公司'
+        verbose_name_plural = verbose_name
+        db_table = 'flight_company'
+
+    def __str__(self):
+        return self.ch_description
+
+
+class Airport(models.Model):
+    """机场信息"""
+
+    three_code = models.CharField('机场三字码', unique=True, max_length=3)
+    four_code = models.CharField('机场四字码', unique=True, max_length=4)
+    property = models.CharField('机场属性', max_length=3)
+    ch_description = models.CharField('中文描述', max_length=70)
+    inter_description = models.CharField('英文描述', null=True, max_length=70)
+    is_open = models.CharField('该通航机场是否开启(O,C)', null=True, max_length=1)
+    alias = models.CharField('机场简称', null=True, max_length=10)
+    country_code = models.CharField('国家代码', null=True, max_length=3)
+    city_code = models.CharField('城市代码', null=True, max_length=3)
+    lat = models.FloatField('机场纬度', null=True)
+    lon = models.FloatField('机场经度', null=True)
+
+    class Meta:
+        verbose_name = '机场信息'
+        verbose_name_plural = verbose_name
+        db_table = 'airport'
+
+    def __str__(self):
+        return self.ch_description
+
+
+class FlightException(models.Model):
+    """航班异常"""
+
+    errcode = models.CharField('错误码', unique=True, max_length=10)
+    ch_description = models.CharField('中文错误描述', null=True, max_length=100)
+    inter_description = models.CharField('英文错误描述', null=True, max_length=100)
+    errcode_belong = models.CharField('所属异常原因类别', null=True, max_length=10)
+    is_type = models.CharField('是否是异常原因类别 (n是,y不是)', null=True, max_length=10)
+    errcode_type = models.CharField('异常原因分类', null=True, max_length=5)
+
+    class Meta:
+        verbose_name = '航班异常'
+        verbose_name_plural = verbose_name
+        db_table = 'flight_exception'
+
+    def __str__(self):
+        return self.ch_description
+
+
+class ResourceInfo(BaseModel):
+    """航站楼内的资源"""
+
+    class ResourceType(TextChoices):
+        PASSAGEWAY = 'passageway', '航站楼出入口'
+        COUNTER = 'counter', '值机柜台'
+        SECURITY = 'security', '安检口'
+        BOARDING = 'boarding', '登机口'
+        REVERSE = 'reverse', '反向通道'
+        BAGGAGE = 'baggage', '行李转盘'
+        PLACEMENT = 'placement', '机位'
+        SECURITY_HALL = 'security_hall', '安检大厅'
+
+    class ResourceTypeSecond(TextChoices):
+        ENTRANCE = 'entrance', '航站楼入口'
+        EXIT = 'exit', '航站楼出口'
+
+    class ResourceStatus(IntegerChoices):
+        FREE = 0, '机位空闲/登机口关闭'
+        USE = 1, '机位使用/登机口开放'
+
+    name = models.CharField('资源名称', max_length=20)
+    resource_type = models.CharField('一级资源分类', choices=ResourceType.choices, max_length=20)
+    resource_type_sec = models.CharField('二级资源分类', choices=ResourceTypeSecond.choices, max_length=20, blank=True)
+    nature = models.CharField('属性（国际、国内、地区、混合）', max_length=2, default='国内')
+    current_queue_number = models.IntegerField('排队人数', default=0)
+    status = models.SmallIntegerField('状态', choices=ResourceStatus.choices, null=True, blank=True)
+
+    flights = models.ManyToManyField(
+        FlightInfo,
+        verbose_name='关联航班信息',
+        blank=True,
+        related_name="flight_set",
+        related_query_name="flights",
+        through='FlightResource',
+    )
+
+    class Meta:
+        verbose_name = '航站楼资源信息'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_resource_info'
+
+    @property
+    def using(self):
+        return self.status == self.ResourceStatus.USE.value
+
+    def __str__(self):
+        return self.name
+
+
+class FlightResource(models.Model):
+    """资源关联航班信息
+
+    登机口、转盘、机位
+
+    1 登机口流程
+    收到开始登机消息，登机口开始使用 status=开放
+    1. 根据fl_id找到对应的航班号
+    2. 根据fl_id找到对应的使用的登机口
+
+    # 收到截止登机消息，登机口关闭使用 status=关闭
+
+    2 机位流程
+    收到视频分析的飞机入位消息，机位状态=使用
+    根据机位使用时间查询出对应的航班号-根据航班号进行展示
+
+    收到视频分析的飞机离位消息，机位状态=空闲
+
+    3.转盘
+    根据航班信息，展示预计即可
+    """
+
+    flight = models.ForeignKey(FlightInfo, verbose_name='航班信息', on_delete=models.CASCADE)
+    resource = models.ForeignKey(ResourceInfo, verbose_name='资源信息', on_delete=models.CASCADE)
+    plan_start_time = models.DateTimeField('预计开始使用时间')
+    plan_end_time = models.DateTimeField('预计结束使用时间')
+    actual_start_time = models.DateTimeField('实际开始使用时间', null=True, blank=True)
+    actual_end_time = models.DateTimeField('实际结束使用时间', null=True, blank=True)
+    exit_number = models.CharField('转盘到达出口号', blank=True, max_length=10)
+
+    class Meta:
+        verbose_name = '航班资源信息'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_flight_resource'
+
+
+class PeopleCountingRecord(models.Model):
+    """实时人数统计记录
+
+    0 点  0人
+    1点   100人
+    2点   180人
+    3点   209人
+    ...
+    24时  xxx人
+    """
+
+    resource = models.ForeignKey(ResourceInfo, verbose_name='关联资源', on_delete=models.CASCADE)
+    statistical_time = models.DateTimeField('统计时间', db_index=True)
+    total_people = models.IntegerField('统计总人数', default=1)
+
+    class Meta:
+        verbose_name = '实时人数统计记录'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_people_counting_record'
+        index_together = ['resource', 'statistical_time', 'total_people']
+
+
+class PassageWayCarPassThrough(models.Model):
+    """道口车辆通行信息"""
+
+    class DirectionType(IntegerChoices):
+        ENTRANCE = 0, '驶入'
+        LEAVE = 1, '驶离'
+
+    passageway_name = models.CharField('道口名称', max_length=20)
+    passageway_device_code = models.CharField('道口设备编码', max_length=200)
+    passage_time = models.DateTimeField('通行时间')
+    car_number = models.CharField('车牌号', max_length=20)
+    car_number_image_url = models.CharField('车牌号图片地址', max_length=100)
+    direction = models.SmallIntegerField('进出方向', choices=DirectionType.choices)
+
+    class Meta:
+        verbose_name = '道口车辆通行信息'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_passage_way_car_pass_through'

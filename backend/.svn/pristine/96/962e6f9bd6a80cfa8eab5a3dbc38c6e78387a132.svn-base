@@ -1,0 +1,283 @@
+import datetime
+
+from collections import OrderedDict
+
+from rest_framework import serializers
+
+from situations.models import ResourceInfo, PassageWayCarPassThrough, FlightInfo
+from situations.utils import PeopleCountingIntegrate
+from security_platform.utils.serializer import CustomModelSerializer
+from events.models import (
+    DeployAlarmRecord, DeployPersonSnapRecord, PersonDensityRecord, BehaviorAlarmRecord,
+    DeviceAlarmEvent, PlaceAlarmRecord
+)
+
+
+class ResourceInfoSerializer(CustomModelSerializer):
+    """基础资源信息查询序列化器"""
+
+    related_camera = serializers.SerializerMethodField(label='关联摄像机信息')
+
+    class Meta:
+        """模型类配置"""
+        model = ResourceInfo
+        fields = ['resource_id', 'resource_name', 'related_camera']
+        extra_kwargs = {
+            'resource_name': {'source': 'name'},
+            'resource_id': {'source': 'id'},
+        }
+
+    def get_related_camera(self, resource):
+        """获取关联的摄像机信息"""
+        return resource.cameradevice_set.all().values('device_name', 'device_code', 'flow_address')
+
+
+class CheckInCounterSerializer(ResourceInfoSerializer):
+    """
+    值机柜台信息序列化器
+    """
+
+    class Meta(ResourceInfoSerializer.Meta):
+        fields = ResourceInfoSerializer.Meta.fields + ['current_queue_number']
+
+
+class SecurityCheckSerializer(ResourceInfoSerializer):
+    """
+    安检口信息序列化器
+    """
+    total_people_number = serializers.SerializerMethodField(label='累计人数')
+    speed = serializers.SerializerMethodField(label='安检速度')
+
+    class Meta(ResourceInfoSerializer.Meta):
+        fields = ResourceInfoSerializer.Meta.fields + ['current_queue_number', 'total_people_number', 'speed']
+
+    def get_total_people_number(self, instance):
+        """获取安检口累计人数"""
+        if not hasattr(self, 'integrate'):
+            self.integrate = PeopleCountingIntegrate(datetime.datetime.now(), (instance.id, ))
+        else:
+            self.integrate.resources = (instance.id, )
+
+        return self.integrate.total_count
+
+    def get_speed(self, _):
+        """获取安检口的安检速度
+
+        根据当前时间获取数据库中保存的统计时间
+        根据统计时间查询出对应的累计人数
+
+        查询到：有数据
+        未查询到：无数据
+
+        """
+        return self.integrate.speed
+
+
+class DensityAlarmSerializer(CustomModelSerializer):
+
+    alarm_time = serializers.DateTimeField(source='event.alarm_time')
+    priority = serializers.IntegerField(source='event.priority')
+    device_name = serializers.CharField(source='event.device.device_name')
+    device_code = serializers.CharField(source='event.device.device_code')
+    flow_address = serializers.CharField(source='event.device.cameradevice.flow_address')
+
+    class Meta:
+        model = PersonDensityRecord
+        fields = [
+            'density_image_url', 'alarm_time', 'event_id', 'priority', 'device_name',
+            'device_code', 'flow_address'
+        ]
+        extra_kwargs = {'event_id': {'source': 'event'}}
+
+
+class PostureAlarmSerializer(CustomModelSerializer):
+    """姿态动作识别序列化输出"""
+
+    alarm_time = serializers.DateTimeField(source='event.alarm_time')
+    event_name = serializers.CharField(source='event.event_name')
+    resource_name = serializers.CharField(source='resource.name')
+
+    class Meta:
+        model = BehaviorAlarmRecord
+        fields = ['alarm_image_url', 'event_name', 'resource_name', 'alarm_time', 'event_id']
+        extra_kwargs = {'event_id': {'source': 'event'}}
+
+
+class BoardingGateSerializer(ResourceInfoSerializer):
+    """
+    登机口信息序列化器
+    """
+    total_people_number = serializers.SerializerMethodField(label='累计人数')
+
+    class Meta(ResourceInfoSerializer.Meta):
+        fields = ResourceInfoSerializer.Meta.fields + ['total_people_number', 'status']
+
+    def get_total_people_number(self, instance):
+        """获取安检口累计人数"""
+        if not hasattr(self, 'integrate'):
+            self.integrate = PeopleCountingIntegrate(datetime.datetime.now(), (instance.id, ))
+        else:
+            self.integrate.resources = (instance.id, )
+
+        return self.integrate.total_count
+
+    def to_representation(self, instance):
+        """增加航班数据"""
+        data = super().to_representation(instance)
+
+        # 增加航班数据
+        if instance.using:
+            # 登机中，需要找到对应的航班
+
+            try:
+                flight = instance.flights.get(flight_status=FlightInfo.FlightStatus.START_BOARDING)
+            except FlightInfo.DoesNotExist:
+                data['flight_number'] = ''
+                data['plan_takeoff'] = ''
+                data['estimate_takeoff'] = ''
+            else:
+                data['flight_number'] = flight.flight_number
+                data['plan_takeoff'] = str(flight.plan_takeoff) if flight.plan_takeoff else ''
+                data['estimate_takeoff'] = str(flight.estimate_takeoff) if flight.estimate_takeoff else ''
+
+        return data
+
+
+class BaggageTurntableSerializer(ResourceInfoSerializer):
+    """行李转盘序列化器"""
+
+    flight = serializers.SerializerMethodField(label='航班信息')
+
+    class Meta(ResourceInfoSerializer.Meta):
+        fields = ResourceInfoSerializer.Meta.fields + ['flight', 'nature']
+
+    def get_flight_use(self, instance):
+        return instance.flightresource_set.only(
+            'flight__flight_number',
+            'plan_start_time',
+            'plan_end_time',
+            'actual_start_time',
+            'actual_end_time',
+            'exit_number',
+        ).select_related('flight').order_by('-id').first()
+
+    def is_end(self, flight_use):
+        return datetime.datetime.now() > (flight_use.actual_end_time or flight_use.plan_end_time)
+
+    def get_flight(self, instance):
+        """获取航班数据"""
+        flight = OrderedDict(flight_number='', start_time='', end_time='')
+        flight_use = self.get_flight_use(instance)
+
+        if flight_use is not None and not self.is_end(flight_use):
+            # 航班存在且使用未结束
+            flight['flight_number'] = flight_use.flight.flight_number
+            flight['start_time'] = str(flight_use.actual_start_time or flight_use.plan_start_time)
+            flight['end_time'] = str(flight_use.actual_end_time or flight_use.plan_end_time)
+            flight['exit_number'] = flight_use.exit_number
+
+        return flight
+
+    def to_representation(self, instance):
+        """合并flight"""
+        data = super().to_representation(instance)
+        data.update(data.pop('flight'))
+
+        return data
+
+
+class ReverseChannelSerializer(ResourceInfoSerializer):
+    """反向通道"""
+
+    total_people_number = serializers.SerializerMethodField(label='累计人数')
+
+    class Meta(ResourceInfoSerializer.Meta):
+        fields = ResourceInfoSerializer.Meta.fields + ['total_people_number']
+
+    def get_total_people_number(self, instance):
+        """获取反向通道累计人数"""
+        if not hasattr(self, 'integrate'):
+            self.integrate = PeopleCountingIntegrate(datetime.datetime.now(), (instance.id,))
+        else:
+            self.integrate.resources = (instance.id,)
+
+        return self.integrate.total_count
+
+
+class DeployAlarmSerializer(CustomModelSerializer):
+    """布控报警序列化器"""
+
+    class Meta(ResourceInfoSerializer.Meta):
+        model = DeployAlarmRecord
+        fields = ['person_db_image_url', 'snap_image_url', 'score', 'person_name', 'person_sex', 'event_id']
+
+
+class DeploySnapSerializer(CustomModelSerializer):
+    """布控抓拍序列化器"""
+
+    resource_name = serializers.SerializerMethodField(label='抓拍位置')
+
+    class Meta(ResourceInfoSerializer.Meta):
+        model = DeployPersonSnapRecord
+        fields = ['snap_image_url', 'snap_time', 'resource_name']
+
+    def get_resource_name(self, instance):
+        return instance.camera.resource.name
+
+
+class CarPassThroughSerializer(CustomModelSerializer):
+    """获取道口车辆信息序列化器"""
+
+    class Meta:
+        model = PassageWayCarPassThrough
+        fields = [
+            'car_number_image_url', 'car_number', 'passageway_name', 'direction',
+            'passage_time', 'passageway_device_code'
+        ]
+
+
+class ScopesAlarmSerializer(CustomModelSerializer):
+    """围界报警信息序列化器"""
+
+    device_name = serializers.CharField(source='device.device_name')
+    device_code = serializers.CharField(source='device.device_code')
+
+    class Meta:
+        model = DeviceAlarmEvent
+        fields = ['event_id', 'event_name', 'device_name', 'device_code', 'alarm_time', 'area_code', 'priority']
+        extra_kwargs = {'event_id': {'source': 'id'}}
+
+
+class PlacementSerializer(ResourceInfoSerializer):
+    """机位序列化器"""
+
+    class Meta(ResourceInfoSerializer.Meta):
+        fields = ResourceInfoSerializer.Meta.fields + ['status']
+
+    def to_representation(self, instance):
+        """合并flight"""
+        data = super().to_representation(instance)
+
+        if instance.using:
+            # 使用中需要获取对应的航班
+            try:
+                flight = instance.flights.get(place_status=FlightInfo.PlaceStatus.ENTER)
+            except FlightInfo.DoesNotExist:
+                return data
+
+            data['flight_number'] = flight.flight_number
+
+        return data
+
+
+class PlacementAlarmSerializer(CustomModelSerializer):
+    """机位报警信息"""
+
+    event_name = serializers.DateTimeField(source='event.event_name')
+    alarm_time = serializers.DateTimeField(source='event.alarm_time')
+    resource_name = serializers.DateTimeField(source='resource.name')
+
+    class Meta:
+        model = PlaceAlarmRecord
+        fields = ['event_id', 'event_name', 'alarm_time', 'resource_name']
+        extra_kwargs = {'event_id': {'source': 'id'}}

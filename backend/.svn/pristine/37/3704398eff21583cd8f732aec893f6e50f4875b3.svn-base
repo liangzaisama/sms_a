@@ -1,0 +1,152 @@
+"""MQ消息处理程序入口文件
+
+main 入口函数，程序执行时调用此函数
+ProcessManager 进程管理，负责消息处理worker和websocket进程连接的进程创建及监控
+
+Examples:
+    main()
+"""
+import os
+import sys
+import time
+from multiprocessing import Process
+
+import django
+
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(base_dir))
+
+try:
+    from manage import set_django_module
+    set_django_module()
+    django.setup()
+
+    from security_platform import config_parser
+
+    from utils.topic import SUBSCRIBE_TOPIC
+    from core.client import callback, MessageQueueClient
+    from core.esb import process_iis_message
+except ImportError:
+    raise ImportError("Couldn't import DJANGO_SETTINGS_MODULE")
+
+
+class IISProcess(Process):
+
+    def run(self):
+        process_iis_message()
+
+
+class ProcessManager:
+    """进程管理
+
+    负责事件消息处理worker类和websocket连接的进程创建及监控
+
+    Attributes:
+        _process_list: 维护所有创建进程的列表，用于监控进程的状态
+    """
+    ws_process_type = 'ws'
+    worker_process_type = 'message'
+
+    def __init__(self):
+        """初始化"""
+        self._process_list = []
+
+    def _create_msg_worker_process(self, msg_worker, queue):
+        """创建消息处理worker进程
+
+        进程创建后后增加相关属性，用于重新开启进程时使用
+
+        Args:
+            msg_worker: 进程执行的worker函数
+            queue: 进程接收消息的队列
+
+        Returns:
+            worker_process: 创建的进程
+        """
+        worker_process = Process(target=msg_worker(), args=(queue, ), daemon=True)
+        worker_process.start()
+        worker_process.worker = msg_worker
+        worker_process.queue = queue
+        worker_process.type = self.worker_process_type
+
+        return worker_process
+
+    def start_iis_process(self):
+        iis_process = IISProcess(daemon=True)
+        iis_process.start()
+        iis_process.type = 'iis'
+
+        return iis_process
+
+    def _restart_process(self, process):
+        """重新启动进程
+
+        根据进程的type属性来判断时什么进行，调用对应的函数重新开启
+
+        Args:
+            process: 已死亡的进程
+
+        Returns:
+           new_process: 新开启的进程
+        """
+        if process.type == self.worker_process_type:
+            return self._create_msg_worker_process(process.worker, process.queue)
+        else:
+            return self.start_iis_process()
+
+    def register(self, registry_list):
+        """开启事件消息处理worker进程"""
+        for registry in registry_list:
+            callback_class = getattr(callback, registry.class_name)
+
+            if issubclass(callback_class, callback.MultiprocessMessageCallback):
+                # 只处理多进程消息worker
+                for _ in range(registry.process_count):
+                    self._process_list.append(self._create_msg_worker_process(registry.worker, registry.queue))
+
+        # 开启航班消息进程
+        self._process_list.append(self.start_iis_process())
+
+    def monitor(self):
+        """子进程监控
+
+        每5秒中执行依次，无限循环
+        如果进程死亡，将新的进程添加到进程列表，将死亡的进程剔除
+        """
+        while True:
+            copy_process_list = self._process_list.copy()
+
+            for process in self._process_list:
+                if not process.is_alive():
+                    new_process = self._restart_process(process)
+
+                    process.terminate()
+                    copy_process_list.remove(process)
+                    copy_process_list.append(new_process)
+
+            self._process_list = copy_process_list
+            time.sleep(5)
+
+
+def main():
+    """入口函数"""
+
+    # 创建进程
+    manager = ProcessManager()
+    manager.register(callback.registry_list)
+
+    # 开启mq连接
+    mq_client = MessageQueueClient(SUBSCRIBE_TOPIC, callback.registry_list)
+    mq_client.connect(
+        int(config_parser.get('MQTT', 'MQTT_PORT')),
+        config_parser.get('MQTT', 'MQTT_SERVER_IP'),
+        config_parser.get('MQTT', 'MQTT_USER'),
+        config_parser.get('MQTT', 'MQTT_PWD')
+    )
+
+    # 监控子进程的状态，如果存在异常则重启进程
+    manager.monitor()
+
+
+if __name__ == '__main__':
+    main()

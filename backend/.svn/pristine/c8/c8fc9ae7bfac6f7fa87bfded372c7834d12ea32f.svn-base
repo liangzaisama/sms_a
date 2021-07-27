@@ -1,0 +1,104 @@
+"""消息处理worker类
+"""
+import xmltodict
+from json import JSONDecodeError, loads
+from pyexpat import ExpatError
+
+from security_platform import receive_logger as logger
+
+from core import mixins
+from utils.exceptions import CustomerException
+from utils.topic import PERSON_SNAP_TOPIC_PREFIX
+
+
+class GenericWorker:
+    """通用消息处理
+
+    主进程通过callback回调函数将对应的消息放到消息队列中，子进程执行__call__
+    函数，不断从队列中拿到数据进行处理，通过dispatch方法根据主题分发到对应的函数
+    进行业务逻辑的处理。
+
+    Class Attributes:
+        content_type: 消息的数据类型，默认json
+    """
+    content_type = 'json'
+
+    def str_to_dict(self, content):
+        """将收到的消息字符串数据转成功字典"""
+        if self.content_type == 'json':
+            return loads(content)
+
+        return xmltodict.parse(content)
+
+    def msg_topic_transform(self, msg_topic):
+        """消息主题转化"""
+        if msg_topic.startswith(PERSON_SNAP_TOPIC_PREFIX):
+            # 抓拍主题
+            msg_topic = PERSON_SNAP_TOPIC_PREFIX
+
+        return msg_topic.lower().replace('/', '_')
+
+    def dispatch(self, msg_tuple):
+        """消息分发
+
+        根据消息的主题获取对应的函数进行业务逻辑处理
+        主题转函数名称的规则为：将主题中的 '/'替换为 '_'
+        ais/alarm/trigger > ais_alarm_trigger
+
+        Args:
+            msg_tuple: 消息元组, 格式为(消息接收主题，消息内容)
+
+        Examples:
+            msg_tuple: ('ais/alarm/trigger', '{"msg": {"head": {"service_code": "RUC_AIS_ALA）
+        """
+        logger.debug('接收消息为:%s', msg_tuple)
+        msg_topic, msg_content = msg_tuple
+
+        handler = getattr(self, self.msg_topic_transform(msg_topic), None)
+        if handler is not None:
+            response = handler(self.str_to_dict(msg_content))
+            logger.info(response)
+
+    # noinspection PyBroadException
+    def __call__(self, queue):
+        """从队列中拿数据处理
+
+        Args:
+            queue (Queue): 取数据的进程队列
+        """
+        while True:
+            try:
+                self.dispatch(queue.get())
+            except (JSONDecodeError, ExpatError):
+                logger.warning('数据解析失败', exc_info=False)
+            except CustomerException as exc:
+                logger.warning(exc)
+            except Exception:
+                logger.error('消息处理异常', exc_info=True)
+
+
+# class VMSWork(AbstractWorker, mixins.VMSMixin):
+#     pass
+
+
+class CommonWork(GenericWorker,
+                 mixins.VideoAnalysisMixin,
+                 mixins.MaintenanceMixin,
+                 mixins.EntranceMixin,
+                 mixins.FireMixin,
+                 mixins.ConcealMixin,
+                 mixins.PassageWayMixin,
+                 mixins.CameraMixin):
+    """围界/门禁/消防/隐蔽报警/道口/视频监控事件处理"""
+
+    pass
+
+
+class IISWork(GenericWorker,
+              mixins.IISFlightMixin,
+              mixins.IISAirportMixin,
+              mixins.IISCompanyMixin,
+              mixins.IISExceptionMixin):
+    """航班事件处理"""
+
+    content_type = 'xml'

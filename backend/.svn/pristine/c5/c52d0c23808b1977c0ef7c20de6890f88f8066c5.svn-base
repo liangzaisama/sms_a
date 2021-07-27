@@ -1,0 +1,132 @@
+import os
+import sys
+
+import numpy
+import django
+from django.conf import settings
+
+file_path = os.path.abspath(__file__)
+base_dir = os.path.dirname(file_path)
+sys.path.insert(0, os.path.join(os.path.dirname(base_dir)))
+
+from manage import set_django_module
+
+if not os.getenv('DJANGO_SETTINGS_MODULE'):
+    set_django_module()
+    django.setup()
+
+import logging
+logger = logging.getLogger('django')
+logger.setLevel('DEBUG')
+
+
+def get_export_data(file_path=settings.API_SETTINGS.EXPORT_PATH, **kwargs):
+    """读取excel数据"""
+    import pandas as pd
+    import numpy
+    data = pd.read_excel(file_path, 'areas')
+    area_dict = {}
+    for i in data.index:
+        ret = (dict(data.loc[i]))
+        area_dict[ret['编号']] = ret['短名称']
+    print(area_dict)
+    camera_data = pd.read_excel(file_path, 'camera')
+    for i in camera_data.index:
+        area_code = camera_data.loc[i].area_code
+        if isinstance(area_code, (numpy.int64, int)):
+            # print(area_code)
+            camera_data.loc[camera_data.area_code == area_code, 'area_code'] = area_dict[area_code]
+
+    # for i in range(1, 89):
+    #
+    #     try:
+    #         a = df[(df.detector_code == float(i)) & (df.device_model == 'VDC-5120')]
+    #         value = a.device_code._values[0]
+    #     except IndexError:
+    #         continue
+    #     else:
+    #         df.loc[df.parent == float(i), 'parent'] = value
+    #
+    camera_data.to_excel('test.xlsx', sheet_name='camera', index=False, header=True)
+
+
+def add_test_resource():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice
+
+    res = ResourceInfo.objects.all()
+    for i in res:
+        if not i.deviceinfo_set.all():
+            print(i)
+            # cameras = CameraDevice.objects.filter(resource=None)[0:2]
+            # for z in cameras:
+            #     z.resource = i
+            #     z.save()
+
+    # for camera in cameras_:
+
+    # for index in range(len(res)):
+    #     came = cameras[index]
+    #     resource_id = res[index]
+    #     came.resource_id = resource_id
+    #     came.save()
+
+
+# def test():
+#     from situations.models import ResourceInfo, FlightResource
+#     from devices.models import CameraDevice, DeviceInfo
+#     from events.models import CameraLineUpRecord, PeopleCountingRecord, DeviceAlarmEvent
+#     from datetime import datetime, timedelta
+#     from django.db.models import Count, Sum
+#
+#     res = ResourceInfo.objects.filter(resource_type='maintenance')
+#     for i in res:
+#         print(i)
+
+    # count = 1
+    # for camera in cameras:
+    #     camera.resource_id = res[count]
+    #     camera.save()
+    #     count += 1
+
+    # for i in range(len(res)):
+
+    # CameraDevice.objects.all()
+    # ret = DeviceAlarmEvent.objects.filter(belong_system=DeviceInfo.BelongSystem.MAINTENANCE)
+    # print(ret)
+
+    # ret = CameraLineUpRecord.objects.filter(
+    #     camera__resource__resource_type='security',
+    #     detection_time__gte=datetime.now() - timedelta(minutes=1)
+    # ).aggregate(total_people=Sum('current_queue_number'))
+    # print(ret)
+    # ret = PeopleCountingRecord.objects.filter(
+    #     statistical_time__week_day=6,
+    #     camera__resource__resource_type='security',
+    #     statistical_time__gte=datetime.now().date() - timedelta(days=28),
+    #     statistical_time__lte=datetime.now().date(),
+    # ).extra(select={"time": "DATE_FORMAT(statistical_time, '%%h:%%i:%%s')"}).values('time').annotate(
+    #     total_people=Sum('total_people'))
+    #
+    # print(ret)
+    # for i in ret:
+    #     print(i)
+    # <QuerySet [
+    # {'camera_id': 4647, 'camera__resource__id': 418, 'total_people': 1746},
+    # {'camera_id': 4645, 'camera__resource__id': 420, 'total_people': 1780},
+    # {'camera_id': 4646, 'camera__resource__id': 419, 'total_people': 1729}]>
+
+    # <QuerySet [
+    # {'camera_id': 4647, 'total_people': 1772},
+    # {'camera_id': 4645, 'total_people': 1807},
+    # {'camera_id': 4646, 'total_people': 1752}
+    # ]>
+
+    # <QuerySet [
+    # {'camera__resource__id': 418, 'total_people': 1788},
+    # {'camera__resource__id': 420, 'total_people': 1827},
+    # {'camera__resource__id': 419, 'total_people': 1771}]>
+
+
+if __name__ == '__main__':
+    add_test_resource()

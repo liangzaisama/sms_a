@@ -1,0 +1,144 @@
+import os
+import sys
+
+import django
+
+file_path = os.path.abspath(__file__)
+base_dir = os.path.dirname(file_path)
+sys.path.insert(0, os.path.join(os.path.dirname(base_dir)))
+
+from manage import set_django_module
+
+if not os.getenv('DJANGO_SETTINGS_MODULE'):
+    set_django_module()
+    django.setup()
+
+
+from users.models import Department, User
+from devices.models import DeviceInfo, CameraDevice, DeviceGroup, DeviceLabel
+
+# 问题，objects过滤逻辑删除后，关联关系有哪些会受到影响
+# device = DeviceInfo.objects.get(id=1)
+# user = User.objects.get(id=7)
+
+# 结论1：多对多直接关联的对象，如果对象被逻辑删除不显示  例子：设备》》》用户
+# obj = result[0]
+# print(obj.users.all())
+
+# 多对多关系
+# DeviceInfo
+# users = models.ManyToManyField(
+#         User,
+#         verbose_name='关联用户设备权限',
+#         blank=True,
+#         related_name="device_set",
+#         related_query_name="devices"
+#     )
+
+"""
+多对多关系  ManyToManyField
+"""
+# 1. 正向查询  device查user  关联对象逻辑被逻辑删除查询不到
+# SELECT `users_user`.`id`, `users_user`.`username` FROM `users_user` INNER JOIN
+# `tb_device_info_users` ON (`users_user`.`id` = `tb_device_info_users`.`user_id`)
+# WHERE (`users_user`.`is_deleted` = 0 AND `tb_device_info_users`.`deviceinfo_id` = 1)
+# ret = device.users.all().only('username')
+# print(ret)
+
+# print('3. 正向过滤，device根据user过滤')
+# SELECT `tb_device_info`.`id`, `tb_device_info`.`device_name` FROM `tb_device_info`
+# INNER JOIN `tb_device_info_users` ON (`tb_device_info`.`id` = `tb_device_info_users`.`deviceinfo_id`)
+# WHERE (`tb_device_info`.`is_deleted` = 0 AND `tb_device_info_users`.`user_id` = 1)
+
+# result = DeviceInfo.objects.filter(users__id=user.id).only('device_name')
+# print(result)
+
+# 2.反向查询  user查device  关联对象逻辑被逻辑删除查询不到
+# SELECT `tb_device_info`.`id`, `tb_device_info`.`device_name` FROM `tb_device_info` INNER JOIN `tb_device_info_users` ON (`tb_device_info`.`id` = `tb_device_info_users`.`deviceinfo_id`) WHERE (`tb_device_info`.`is_deleted` = 0 AND `tb_device_info_users`.`user_id` = 1)  LIMIT 21; args=(False, 1)
+# ret = user.device_set.all().only('device_name')
+# print(ret)
+
+# # 4. 反向过滤，user根据device过滤
+# SELECT `users_user`.`id`, `users_user`.`username` FROM `users_user` INNER JOIN `
+# tb_device_info_users` ON (`users_user`.`id` = `tb_device_info_users`.`user_id`)
+# WHERE (`users_user`.`is_deleted` = 0 AND `tb_device_info_users`.`deviceinfo_id` = 2)
+# result = User.objects.filter(devices=DeviceInfo.objects.get(id=2)).only('username')
+# print(result)
+
+
+"""
+一对多关系  ForeignKey
+"""
+# department = models.ForeignKey(Department, verbose_name='部门',
+# on_delete=models.PROTECT, null=True, blank=True)
+
+# 1. 正向查询  user查部门，只能查出来一个
+# ret = user.department
+# print(ret)
+
+# # 3. 正向过滤，device根据user过滤
+# result = User.objects.filter(department=department)
+# print(result)
+
+# # 2.反向查询  部门查用户、可以查出来多个 可以过滤逻辑删除
+# SELECT `users_user`.`id`, `users_user`.`password`, `users_user`.`last_login`, `users_user`.`
+# is_superuser`, `users_user`.`username`, `users_user`.`first_name`, `users_user`.`last_name`,
+# `users_user`.`email`, `users_user`.`is_staff`, `users_user`.`is_active`, `users_user`.`date
+# _joined`, `users_user`.`department_id`, `users_user`.`is_leader`, `users_user`.`mobile`,
+# `users_user`.`scenario`, `users_user`.`staff_name`, `users_user`.`is_deleted` FROM `user
+# s_user` WHERE (`users_user`.`is_deleted` = 0 AND `users_user`.`department_id` = 1)
+# LIMIT 21; args=(False, 1)
+# ret = department.user_set.all()
+# print(ret)
+
+# # 4. 反向过滤，部门根据用户过滤
+# de = Department.objects.select_related().first()
+# print(de)
+# print(de.user_set.all().only('username', 'department_id'))
+# ret = de.user_set.all()
+# print(ret)
+
+# from django.db.models import Count
+# ret = User.objects.filter(id__in=[1, 2, 3, 4]).values('department_id').annotate(Count('id'))
+# print(ret)
+# print(len(ret))
+
+
+# DeviceInfo.objects.filter(users=user, departments=user.department_id)
+# from situations.models import ResourceInfo
+# ret = ResourceInfo.objects.filter(resource_type='boarding').only('name', 'flights__af_id').prefetch_related('flights')
+# for i in ret:
+#     print(i)
+#     ret = i.flights.get(id=888)
+#     for x in ret:
+#         print(x.flight_number)
+from devices.models import DeviceInfo
+department = Department.objects.get(id=3)
+print(department)
+device = DeviceInfo.objects.filter(id__in=[1, 2]).values_list('id', flat=True)
+
+# 7,23,24
+users = department.user_set.all().values_list('id', flat=True)
+print(device)
+print(users)
+
+# groups = DeviceGroup.objects.filter(user_id__in=users).values_list('id', flat=True)
+# labels = DeviceLabel.objects.filter(user_id__in=users).values_list('id', flat=True)
+
+# print(user)
+# print(groups)
+# print(labels)
+# device.users.remove(*[6, 7])
+# device.users.remove(*[6, 7])
+
+
+# # # 设备部门下用户
+# device.users.remove(*[1,2])
+# #
+# # # 删除部门下用户的设备组
+# device.group_set.remove(*[2, 3])
+#
+# # # 删除部门下用户的标签
+# device.label_set.remove(*[1, 2])
+device = DeviceInfo.objects.filter(device_type='cctv').first()
+print(device.cameradevice.is_ptz)

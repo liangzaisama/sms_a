@@ -1,0 +1,34 @@
+import logging
+
+from django.conf import settings
+from django.core.handlers.wsgi import WSGIRequest
+
+
+class JsonFilter(logging.Filter):
+    """自定义日志过滤器"""
+    status_code = 'status_code'
+    method = 'method'
+    path = 'path'
+
+    def filter(self, record):
+        # 服务启动日志
+        try:
+            request = record.request
+        except AttributeError:
+            record.status_code = self.status_code
+            record.method = self.method
+            record.path = self.path
+            record.my_message = record.msg % record.args
+            return settings.DEBUG
+        # 接口错误处理日志
+        if isinstance(request, WSGIRequest):
+            record.my_message = record.args[0]
+            record.method = request.method
+            record.path = request.path
+        # 通用日志
+        else:
+            record.my_message = record.msg % record.args
+            record.method = record.args[0].split(' ')[0]
+            record.path = record.args[0].split(' ')[1]
+
+        return settings.DEBUG

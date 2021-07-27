@@ -1,0 +1,105 @@
+"""
+调用二所的esb javaSDK获取航班消息
+"""
+import os
+import time
+from json import JSONDecodeError
+from pyexpat import ExpatError
+from threading import Thread
+
+import xmltodict
+from jpype import *
+from jpype._core import startJVM, shutdownJVM
+from jpype._jvmfinder import getDefaultJVMPath
+
+from utils.publish_data import IISPublishData
+from utils.exceptions import CustomerException
+from security_platform import receive_logger as logger
+from core.mixins import IISBasicResourceMixin, IISFlightMixin
+
+
+def
+
+
+
+class IISPublishThread(Thread):
+
+    def run(self):
+        EsbClient = JClass("com.caacitc.rabbitmq.client.EsbClient")
+
+        for data in IISPublishData().get_data():
+            publish_msg = data['publish_msg']
+            producer = EsbClient.getInstance.producer(publish_msg)
+
+            if producer.isSendSuccess():
+                logger.info(f'发送iis消息成功:{publish_msg}')
+            else:
+                logger.info(f'发送iis消息失败 code:{producer.getSendState()}, msg:{producer.getSendDesc()}')
+
+            # 发送请求需要间隔5s，不然会发送请求消息失败
+            time.sleep(5)
+
+
+class IISWork(IISBasicResourceMixin, IISFlightMixin):
+    """航班事件处理"""
+
+    def get_handler_name(self, json_msg):
+        return f"iis_{json_msg['MSG']['META']['STYP'].lower()}"
+
+    def dispatch(self, msg):
+        logger.info(f'接收航班系统消息:{msg}')
+        json_msg = xmltodict.parse(str(msg))
+        handler = getattr(self, self.get_handler_name(json_msg), None)
+
+        if handler:
+            handler(json_msg)
+
+
+def java_code_decorator(func):
+
+    def java_wrapper(*args, **kwargs):
+        # 启动java虚拟机
+        # 注意使用了-D选项指定了jar的目标位置
+        startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=%s" % (os.getcwd() + "/jar/ZhMqRevice.jar"))
+
+        func(*args, **kwargs)
+
+        # 关闭虚拟机
+        shutdownJVM()
+
+    return java_wrapper
+
+
+@java_code_decorator
+def process_iis_message():
+    EsbConsumerWithAutoAck = JClass("com.caacitc.consumer.EsbConsumerWithAutoAck")
+    esb_consumer_with_auto_ack = EsbConsumerWithAutoAck()
+
+    # 获取消息存储队列
+    queue = esb_consumer_with_auto_ack.getListenerImplTest().getQueue()
+
+    # 启动接收消息服务
+    esb_consumer_with_auto_ack.main([])
+
+    # 连接成功状态码
+    success_connect_code = 0
+
+    if esb_consumer_with_auto_ack.getConnectCode() == success_connect_code:
+        # 连接航班系统MQ成功
+        logger.info('航班系统消费者启动成功')
+
+        # 发送基础请求事件
+        IISPublishThread().start()
+
+        # 开始接收数据
+        while True:
+            try:
+                IISWork().dispatch(queue.take())
+            except (JSONDecodeError, ExpatError):
+                logger.warning('数据解析失败', exc_info=False)
+            except CustomerException as exc:
+                logger.warning(exc)
+            except Exception:
+                logger.error('消息处理异常', exc_info=True)
+    else:
+        logger.error('航班系统消费者启动失败')

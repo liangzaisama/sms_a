@@ -1,0 +1,24 @@
+from json import JSONDecodeError
+from pyexpat import ExpatError
+
+from jpype._core import JVMNotRunning
+
+from security_platform import receive_logger as logger
+from utils.exceptions import CustomerException
+
+
+def catch_exception(func):
+
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except (JSONDecodeError, ExpatError):
+            logger.warning('数据解析失败')
+        except CustomerException as exc:
+            logger.warning(exc)
+        # except (BrokenPipeError, JVMNotRunning, RuntimeError):
+        #     pass
+        except Exception:
+            logger.error('消息处理异常', exc_info=False)
+
+    return wrapper

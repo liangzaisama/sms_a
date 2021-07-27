@@ -1,0 +1,17 @@
+[run]
+
+omit =
+    *Test*
+    */__init__.py
+    */migrations/*
+
+source =
+    /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/events
+    /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/devices
+    /Users/liangzaisama/Desktop/sms/backend/security_platform/security_platform/apps/operations
+
+branch = True
+
+[report]
+show_missing = True
+skip_covered = True

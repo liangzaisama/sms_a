@@ -1,0 +1,37 @@
+"""
+自定义django中间件
+"""
+from django.utils.deprecation import MiddlewareMixin
+from rest_framework import status
+from rest_framework.response import Response
+
+from security_platform.utils.mixins import _get_response_success_data
+
+
+class AddOperationFieldMiddleware(MiddlewareMixin):
+    """增加返回的业务字段
+
+    主要是给框架的代码返回时增加自己的业务字段
+    """
+
+    def add_operation_field(self, response):
+        """添加业务字段"""
+        response.data = _get_response_success_data(response.data)
+        response._is_rendered = False
+        response.render()
+
+    def is_add(self, response):
+        """判断是否需要添加"""
+        if isinstance(response, Response):
+            if (status.HTTP_200_OK <= response.status_code <= status.HTTP_207_MULTI_STATUS and
+                    'result' not in response.data):
+                return True
+
+        return False
+
+    def process_response(self, request, response):
+        """响应再次处理"""
+        if self.is_add(response):
+            self.add_operation_field(response)
+
+        return response

@@ -1,0 +1,546 @@
+"""
+事件模块序列化器
+"""
+import datetime
+
+from django.db import transaction
+from rest_framework import serializers
+
+from users.models import UserDiary
+from security_platform import ErrorType
+from security_platform.utils.serializer import CustomModelSerializer, CustomCharField
+from events.models import (
+    PersonAlarmEvent, AlarmEvent, DeviceAlarmEvent, DeployAlarmRecord,
+    DeployPersonSnapRecord, PersonDensityRecord, BehaviorAlarmRecord,
+    PlaceAlarmRecord, PlaceSafeguardRecord,
+    EventWorkSheet)
+
+
+class AlarmEventSerializer(CustomModelSerializer):
+    """基础报警事件序列化器"""
+    start_time = serializers.DateTimeField(label='开始时间', required=False)
+    end_time = serializers.DateTimeField(label='结束时间', required=False)
+
+    class Meta:
+        model = AlarmEvent
+        fields = (
+            'event_id', 'event_name', 'event_type', 'event_code', 'alarm_time', 'area_code', 'event_state',
+            'floor_code', 'priority', 'location_detail', 'event_description', 'start_time', 'end_time'
+        )
+
+        extra_kwargs = {
+            'event_code': {
+                'required': False,
+                'validators': []
+            },
+            'event_name': {
+                'allow_blank': True
+            },
+            'event_state': {
+                'required': False,
+            },
+            # 'priority': {
+            #     'max_value': 10,
+            #     'min_value': 0,
+            #     'required': True
+            # },
+            'event_id': {
+                'read_only': True,
+                'source': 'id'
+            }
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+                value = ''
+
+            if key.find('alarm_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+
+class PersonAlarmEventSerializer(CustomModelSerializer):
+    """人工快捷上报事件序列化器"""
+
+    class Meta:
+        model = PersonAlarmEvent
+        fields = (
+            'event_id', 'event_name', 'event_type', 'event_code', 'alarm_time', 'area_code', 'event_state',
+            'floor_code', 'priority', 'location_detail', 'event_description', 'alarm_person_name', 'alarm_person_type',
+            'alarm_person_mobile', 'handled_user', 'handled_time', 'handled_opinion', 'audit_user', 'audit_time',
+            'audit_opinion'
+        )
+
+        extra_kwargs = {
+            'event_code': {
+                'required': False
+            },
+            'event_state': {
+                'required': False,
+            },
+            # 'priority': {
+            #     'max_value': 10,
+            #     'min_value': 0,
+            #     'required': True
+            # },
+            'event_id': {
+                'read_only': True,
+                'source': 'id'
+            },
+            'handled_user': {
+                'allow_null': False,
+            },
+            'handled_time': {
+                'required': True,
+            },
+            'handled_opinion': {
+                'allow_null': False,
+            },
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+                value = ''
+
+            if key.find('alarm_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+            elif key.find('handled_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+            elif key.find('audit_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+    def create(self, validated_data):
+        """
+        事件上报
+        """
+        validated_data['event_code'] = PersonAlarmEvent.generate_event_code()
+        validated_data['event_state'] = PersonAlarmEvent.EventState.UNAUDITED
+        validated_data['event_type'] = AlarmEvent.EventType.ARTIFICIAL
+        # 控制数据库事务交易
+        with transaction.atomic():
+            instance = super().create(validated_data)
+            # 创建员工日志
+            self.create_staff_diary(instance)
+            # 创建工单
+            self.create_event_work_sheet(instance)
+        return instance
+
+    def validate(self, attrs):
+        """
+        参数校验
+        """
+        handled_user = attrs.get('handled_user')
+        if not handled_user:
+            attrs['handled_user'] = self.context["request"].user.username
+
+        return attrs
+
+    def create_staff_diary(self, instance):
+        """
+        创建员工日志
+        """
+        UserDiary.objects.create(
+            job_time=datetime.datetime.now(),
+            user=self.context['request'].user,
+            handover_user=self.context['request'].user,
+            job_content='人工上报事件{0}, 事件编号为{1}'.format(instance.event_name, instance.event_code),
+            handover_content='人工上报事件{0}, 事件编号为{1}'.format(instance.event_name, instance.event_code)
+        )
+
+    @staticmethod
+    def create_event_work_sheet(instance):
+        """
+        创建事件工单
+        """
+        EventWorkSheet.objects.create(
+            person_alarm_event=instance,
+            work_sheet_code=EventWorkSheet.generate_work_sheet_code()
+
+        )
+
+
+class AuditAlarmEventSerializer(CustomModelSerializer):
+    """审核事件序列化器"""
+
+    class Meta:
+        model = PersonAlarmEvent
+        fields = (
+            'audit_user', 'audit_time', 'audit_opinion', 'event_state'
+        )
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+                value = ''
+
+            if key.find('audit_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+    # noinspection PyUnresolvedReferences
+    def update(self, instance, validated_data):
+        """人工上报事件审核"""
+        event_state = instance.event_state
+        # 事件状态校验
+        if event_state != PersonAlarmEvent.EventState.UNAUDITED:
+            self.param_error(param_name=event_state, code=ErrorType.EVENT_STATE)
+        # 控制数据库事务交易
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+
+            # 更新事件工单状态为关闭
+            try:
+                event_work_sheet = instance.eventworksheet
+            except EventWorkSheet.DoesNotExist:
+                self.param_error(errmsg='事件{0}工单不存在'.format(instance.event_name))
+            event_work_sheet.sheet_state = EventWorkSheet.SheetState.CLOSED
+            event_work_sheet.save()
+
+        return instance
+
+    def validate(self, attrs):
+        """
+        参数校验
+        """
+        audit_opinion = attrs.get('audit_opinion')
+
+        if audit_opinion is None:
+            self.param_error(param_name='audit_opinion', code=ErrorType.NULL)
+
+        attrs['audit_user'] = self.context["request"].user.username
+        attrs['audit_opinion'] = audit_opinion
+        attrs['audit_time'] = datetime.datetime.now()
+
+        return attrs
+
+
+class DeviceAlarmEventSerializer(CustomModelSerializer):
+    """设备快捷上报事件序列化器"""
+
+    class Meta:
+        model = DeviceAlarmEvent
+        fields = (
+            'event_id', 'event_name', 'event_type', 'event_code', 'alarm_time', 'area_code', 'event_state',
+            'floor_code', 'priority', 'location_detail', 'event_description', 'subsystem_event_id', 'alarm_type',
+            'alarm_device_code', 'belong_system', 'is_misrepresent', 'acknowledged_user', 'acknowledged_time',
+            'acknowledged_opinion', 'dispose_user', 'dispose_time', 'dispose_opinion', 'pass_id'
+        )
+
+        extra_kwargs = {
+            'event_code': {
+                'required': False
+            },
+            'event_state': {
+                'required': False,
+            },
+            'alarm_device_code': {
+                'source': 'device'
+            },
+            'priority': {
+                'max_value': 10,
+                'min_value': 0,
+                'required': True
+            },
+            'event_id': {
+                'read_only': True,
+                'source': 'id'
+            }
+        }
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+                value = ''
+            if key == 'alarm_device_code':
+                # 补充用户名字段
+                data['alarm_device_code'] = instance.device.device_code if instance.device else ''
+            if key.find('alarm_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+            elif key.find('acknowledged_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+            elif key.find('dispose_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+    def create(self, validated_data):
+        """
+        事件上报
+        """
+        validated_data['event_code'] = PersonAlarmEvent.generate_event_code()
+        validated_data['event_state'] = DeviceAlarmEvent.EventState.UNCONFIRMED
+        return super().create(validated_data)
+
+
+class DeviceAlarmConfirmEventSerializer(CustomModelSerializer):
+    """设备报警事件确认序列化器"""
+
+    class Meta:
+        model = DeviceAlarmEvent
+        fields = (
+            'event_state', 'is_misrepresent', 'acknowledged_user', 'acknowledged_time', 'acknowledged_opinion',
+        )
+
+    # noinspection PyUnresolvedReferences
+    def update(self, instance, validated_data):
+        """事件确认"""
+        event_state = instance.event_state
+        # 事件状态校验
+        if event_state != DeviceAlarmEvent.EventState.UNCONFIRMED:
+            self.param_error(param_name=event_state, code=ErrorType.EVENT_STATE)
+
+        instance = super().update(instance, validated_data)
+
+        return instance
+
+    def validate(self, attrs):
+        """
+        参数校验
+        """
+        is_misrepresent = attrs.get('is_misrepresent')
+        acknowledged_opinion = attrs.get('acknowledged_opinion')
+
+        if is_misrepresent is None:
+            self.param_error(param_name='is_misrepresent', code=ErrorType.BLANK)
+        if acknowledged_opinion is None:
+            self.param_error(param_name='acknowledged_opinion', code=ErrorType.NULL)
+
+        attrs['acknowledged_user'] = self.context["request"].user.username
+        attrs['acknowledged_time'] = datetime.datetime.now()
+        attrs['acknowledged_opinion'] = acknowledged_opinion
+
+        if is_misrepresent is True:
+            attrs['event_state'] = DeviceAlarmEvent.EventState.RELIEVED
+        else:
+            attrs['event_state'] = DeviceAlarmEvent.EventState.UNDISPOSED
+
+        return attrs
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+                value = ''
+
+            if key.find('acknowledged_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+
+class DeviceAlarmDisposeEventSerializer(CustomModelSerializer):
+    """设备报警事件处置序列化器"""
+
+    class Meta:
+        model = DeviceAlarmEvent
+        fields = (
+            'event_state', 'dispose_user', 'dispose_time', 'dispose_opinion',
+        )
+
+    # noinspection PyUnresolvedReferences
+    def update(self, instance, validated_data):
+        """事件确认"""
+        event_state = instance.event_state
+        # 事件状态校验
+        if event_state != DeviceAlarmEvent.EventState.UNDISPOSED:
+            self.param_error(param_name=event_state, code=ErrorType.EVENT_STATE)
+
+        instance = super().update(instance, validated_data)
+
+        return instance
+
+    def validate(self, attrs):
+        """
+        参数校验
+        """
+        dispose_opinion = attrs.get('dispose_opinion')
+
+        if dispose_opinion is None:
+            self.param_error(param_name='dispose_opinion', code=ErrorType.NULL)
+
+        attrs['dispose_user'] = self.context["request"].user.username
+        attrs['dispose_opinion'] = dispose_opinion
+        attrs['dispose_time'] = datetime.datetime.now()
+
+        return attrs
+
+    def to_representation(self, instance):
+        """返回消息处理"""
+        data = super().to_representation(instance)
+
+        for key in list(data.keys()):
+            value = data[key]
+            if value is None:
+                data[key] = ''
+                value = ''
+
+            if key.find('dispose_time') != -1:
+                data[key] = value.replace('T', ' ').split('.')[0]
+
+        return data
+
+
+class AlarmEventWorkSheetSerializer(CustomModelSerializer):
+    """人工上报事件工单列化器"""
+    event_name = serializers.CharField(source='person_alarm_event.event_name', required=False)
+    event_code = serializers.CharField(source='person_alarm_event.event_code', required=False)
+    event_id = serializers.IntegerField(source='person_alarm_event.id', read_only=True)
+
+    class Meta:
+        model = EventWorkSheet
+        fields = (
+            'event_work_sheet_id', 'work_sheet_code', 'sheet_state', 'event_name', 'event_code',
+            'event_id'
+        )
+
+        extra_kwargs = {
+            'work_sheet_code': {
+                'required': False,
+                'validators': []
+            },
+            'event_name': {
+                'allow_blank': True
+            },
+            'sheet_state': {
+                'required': False,
+            },
+            'event_work_sheet_id': {
+                'read_only': True,
+                'source': 'id'
+            }
+        }
+
+
+class DeployAlarmSerializer(CustomModelSerializer):
+    """布控报警序列化器"""
+
+    alarm_time = serializers.CharField(source='event.alarm_time')
+
+    class Meta:
+        model = DeployAlarmRecord
+        fields = [
+            'event_id', 'person_db_image_url', 'alarm_image_url', 'score', 'name',
+            'type', 'number', 'country', 'city', 'db_name', 'monitor_type',
+            'db_type', 'level', 'customType', 'alarm_time'
+        ]
+
+
+class DeploySnapSerializer(CustomModelSerializer):
+    """布控抓拍序列化器"""
+
+    resource_name = serializers.SerializerMethodField(label='抓拍位置')
+
+    class Meta:
+        model = DeployPersonSnapRecord
+        fields = ['snap_image_url', 'snap_time', 'resource_name']
+
+    def get_resource_name(self, instance):
+        """获取资源名称
+
+        Args:
+            instance: 模型类对象
+
+        Returns:
+            资源名称
+        """
+        return instance.camera.resource.name
+
+
+class PlacementAlarmSerializer(CustomModelSerializer):
+    """机位报警信息"""
+
+    event_name = serializers.DateTimeField(source='event.event_name')
+    alarm_time = serializers.DateTimeField(source='event.alarm_time')
+    resource_name = serializers.DateTimeField(source='resource.name')
+
+    class Meta:
+        model = PlaceAlarmRecord
+        fields = ['event_id', 'event_name', 'alarm_time', 'resource_name']
+        extra_kwargs = {'event_id': {'source': 'id'}}
+
+
+class PlacementSafeguardSerializer(CustomModelSerializer):
+    """机位保障信息"""
+
+    flight_number = CustomCharField(source='flight.flight_number')
+    resource_name = CustomCharField(source='camera.resource.name')
+
+    class Meta:
+        model = PlaceSafeguardRecord
+        fields = ['resource_name', 'safeguard_name', 'safeguard_time', 'flight_number']
+
+
+class ScopesAlarmSerializer(CustomModelSerializer):
+    """围界报警信息序列化器"""
+
+    device_name = serializers.CharField(source='device.device_name')
+    device_code = serializers.CharField(source='device.device_code')
+
+    class Meta:
+        model = DeviceAlarmEvent
+        fields = [
+            'event_id', 'event_name', 'device_name', 'device_code',
+            'alarm_time', 'area_code', 'priority'
+        ]
+        extra_kwargs = {'event_id': {'source': 'id'}}
+
+
+class DensityAlarmSerializer(CustomModelSerializer):
+    """密度报警"""
+
+    alarm_time = serializers.DateTimeField(source='event.alarm_time')
+    priority = serializers.IntegerField(source='event.priority')
+    device_name = serializers.CharField(source='event.device.device_name')
+    device_code = serializers.CharField(source='event.device.device_code')
+    flow_address = serializers.CharField(source='event.device.cameradevice.flow_address')
+
+    class Meta:
+        model = PersonDensityRecord
+        fields = [
+            'alarm_image_url', 'alarm_time', 'event_id', 'priority',
+            'device_name', 'device_code', 'flow_address', 'total_people_number'
+        ]
+        extra_kwargs = {'event_id': {'source': 'event'}}
+
+
+class PostureAlarmSerializer(CustomModelSerializer):
+    """姿态动作报警"""
+
+    alarm_time = serializers.DateTimeField(source='event.alarm_time')
+    event_name = serializers.CharField(source='event.event_name')
+    resource_name = serializers.CharField(source='resource.name')
+
+    class Meta:
+        model = BehaviorAlarmRecord
+        fields = ['alarm_image_url', 'event_name', 'resource_name', 'alarm_time', 'event_id']
+        extra_kwargs = {'event_id': {'source': 'event'}}

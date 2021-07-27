@@ -1,0 +1,158 @@
+"""发送消息的数据类程序
+
+通过数据类的get_data方法获取要发送的数据
+
+Examples:
+    publish_data = IISPublishData().get_data()
+"""
+import uuid
+import datetime
+from collections import OrderedDict
+
+import dicttoxml
+
+from topic import PUBLISH_IIS_TOPIC_PREFIX
+
+
+class PublishData:
+    """消息发送功能接口
+
+    子类必须定义get_data方法，用于获取对应的发送数据
+    """
+
+    def get_data(self):
+        """获取发送数据, 子类必须定义该方法"""
+        raise NotImplementedError('get_data must be implemented')
+
+
+class IISPublishData(PublishData):
+    """航班数据消息发送
+
+    Class Attributes:
+        request_codes: 需要发送的基础请求数据标签
+
+    Attributes:
+        publish_seq: 消息发送序号整数，从0开始，发送消息后依次递增
+    """
+
+    request_codes = ('rqar', 'rqaw', 'rqdf', 'rqap')
+
+    def __init__(self):
+        """初始化发送序号"""
+        self.publish_seq = 0
+
+    def dict_to_xml(self, dict_data):
+        """将字典数据转为xml数据
+
+        Args:
+            dict_data: 需要转换的字典数据
+
+        Returns:
+            xml_data: 字典转换后xml数据
+        """
+        return dicttoxml.dicttoxml(dict_data, custom_root="MSG", root=True, attr_type=False).decode()
+
+    def get_topic(self, code):
+        """获取消息发送主题"""
+        return f'{PUBLISH_IIS_TOPIC_PREFIX}{code}'
+
+    def get_meta(self, request_type, request_stype):
+        """获取消息meta数据字典"""
+        self.publish_seq += 1
+
+        meta_data = OrderedDict()
+        meta_data['SNDR'] = 'SMS'
+        meta_data['RCVR'] = 'FIMS'
+        meta_data['SEQN'] = self.publish_seq
+        meta_data['DDTM'] = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        meta_data['TYPE'] = request_type
+        meta_data['STYP'] = request_stype
+        meta_data['MGID'] = str(uuid.uuid1()).replace('-', '')
+        meta_data['RMID'] = None
+        meta_data['APOT'] = 'ZUGY'
+
+        return meta_data
+
+    def get_rqap(self):
+        """获取机场基础发送数据
+
+        Returns:
+            data: 获取的数据字典
+            examples:
+
+            OrderedDict([('topic', 'smp/iis/rqap'), ('publish_msg', '<?xml version="1.0...>')])
+
+            data['topic']: 消息发送的主题
+            data['publish_msg']: 要发送的xml数据
+        """
+        publish_msg = OrderedDict()
+        publish_msg['META'] = self.get_meta('REQE', 'RQAP')
+        publish_msg['RQST'] = None
+
+        data = OrderedDict()
+        data['topic'] = self.get_topic('rqap')
+        data['publish_msg'] = self.dict_to_xml(publish_msg)
+
+        return data
+
+    def get_rqar(self):
+        """获取航班异常基础发送数据"""
+        publish_msg = OrderedDict()
+        publish_msg['META'] = self.get_meta('REQE', 'RQAR')
+        publish_msg['RQST'] = None
+
+        data = OrderedDict()
+        data['topic'] = self.get_topic('rqar')
+        data['publish_msg'] = self.dict_to_xml(publish_msg)
+
+        return data
+
+    def get_rqaw(self):
+        """航空公司基础发送数据"""
+        publish_msg = OrderedDict()
+        publish_msg['META'] = self.get_meta('REQE', 'RQAW')
+        publish_msg['RQST'] = None
+
+        data = OrderedDict()
+        data['topic'] = self.get_topic('rqaw')
+        data['publish_msg'] = self.dict_to_xml(publish_msg)
+
+        return data
+
+    def get_rqdf(self):
+        """获取航班基础发送数据"""
+        publish_msg = OrderedDict()
+        publish_msg['META'] = self.get_meta('REQE', 'RQDF')
+        publish_msg['RQDF'] = OrderedDict()
+        publish_msg['RQDF']['RQTP'] = None
+        publish_msg['RQDF']['BAPT'] = 'ZUGY'
+
+        data = OrderedDict()
+        data['topic'] = self.get_topic('rqdf')
+        data['publish_msg'] = self.dict_to_xml(publish_msg)
+
+        return data
+
+    def get_data(self):
+        """获取要发送的数据及主题
+
+        根据类属性request_codes，获取 f'get_{code}'拼接方式下的函数获取对应的发送数据
+
+        Returns:
+            data_list: 要发送的数据列表
+            examples:
+
+                [
+                   OrderedDict([('topic', 'smp/iis/rqar'), ('publish_msg', '<?xml ...>')]),
+                   OrderedDict([('topic', 'smp/iis/rqsa'), ('publish_msg', '<?xml ...>')]),
+                   OrderedDict([('topic', 'smp/iis/rqdf'), ('publish_msg', '<?xml ...')]),
+                   OrderedDict([('topic', 'smp/iis/rqap'), ('publish_msg', '<?xml ...')])
+                ]
+        """
+        data_list = []
+        for code in self.request_codes:
+            handel = getattr(self, f'get_{code}', None)
+            if handel is not None:
+                data_list.append(handel())
+
+        return data_list

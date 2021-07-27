@@ -1,0 +1,10 @@
+from security_platform import IntegerChoices
+
+
+class PostureType(IntegerChoices):
+    """姿态动作映射"""
+    RUN = 1, '奔跑'
+    FIGHT = 2, '打架'
+    FALL = 3, '倒地'
+    SQUATS = 4, '下蹲'
+    CALL = 5, '打电话'

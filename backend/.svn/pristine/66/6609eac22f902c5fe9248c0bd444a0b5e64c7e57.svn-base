@@ -1,0 +1,53 @@
+from collections import OrderedDict
+
+from django.db import transaction
+
+from security_platform.utils.views import CustomGenericAPIView
+from security_platform.utils.permisssions import DepartmentLeaderPermission
+from configurations.models import SystemConfig
+from configurations.serializers import ConfigSerializer
+
+
+class GetVersionView(CustomGenericAPIView):
+    """查询版本号
+
+    需要跟rpm包的版本号一致
+    """
+    authentication_classes = ()
+    permission_classes = ()
+    versioning_class = None
+
+    def get(self, _):
+        """获取版本号"""
+        # int('a')
+        return self.success_response(data={'version': '2.2.10'})
+
+
+class ConfigListUpdateView(DepartmentLeaderPermission, CustomGenericAPIView):
+    """系统配置接口
+
+    get:查询
+    put:修改
+    """
+    serializer_class = ConfigSerializer
+
+    def get(self, requests):
+        data = OrderedDict()
+        for config in SystemConfig.objects.all():
+            data[config.config_key] = eval(config.config_value)
+
+        return self.success_response(data=data)
+
+    def perform_update(self, serializer):
+        with transaction.atomic():
+            for config_key, config_value in serializer.validated_data.items():
+                config = SystemConfig.objects.get(config_key=config_key)
+                config.config_value = config_value
+                config.save()
+
+    def put(self, requests):
+        serializer = self.get_serializer(data=requests.data, partial=True)
+        serializer.is_valid()
+        self.perform_update(serializer)
+
+        return self.success_response(data=serializer.validated_data)

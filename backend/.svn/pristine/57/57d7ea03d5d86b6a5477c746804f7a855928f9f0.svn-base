@@ -1,0 +1,390 @@
+import os
+import random
+import sys
+
+import numpy
+import django
+from django.conf import settings
+
+file_path = os.path.abspath(__file__)
+base_dir = os.path.dirname(file_path)
+sys.path.insert(0, os.path.join(os.path.dirname(base_dir)))
+
+from manage import set_django_module
+
+if not os.getenv('DJANGO_SETTINGS_MODULE'):
+    set_django_module()
+    django.setup()
+
+import logging
+logger = logging.getLogger('django')
+logger.setLevel('DEBUG')
+
+
+def get_export_data(file_path=settings.API_SETTINGS.EXPORT_PATH, **kwargs):
+    """读取excel数据"""
+    import pandas as pd
+    import numpy
+    data = pd.read_excel(file_path, 'areas')
+    area_dict = {}
+    for i in data.index:
+        ret = (dict(data.loc[i]))
+        area_dict[ret['编号']] = ret['短名称']
+    print(area_dict)
+    camera_data = pd.read_excel(file_path, 'camera')
+    for i in camera_data.index:
+        area_code = camera_data.loc[i].area_code
+        if isinstance(area_code, (numpy.int64, int)):
+            # print(area_code)
+            camera_data.loc[camera_data.area_code == area_code, 'area_code'] = area_dict[area_code]
+
+    # for i in range(1, 89):
+    #
+    #     try:
+    #         a = df[(df.detector_code == float(i)) & (df.device_model == 'VDC-5120')]
+    #         value = a.device_code._values[0]
+    #     except IndexError:
+    #         continue
+    #     else:
+    #         df.loc[df.parent == float(i), 'parent'] = value
+    #
+    camera_data.to_excel('test.xlsx', sheet_name='camera', index=False, header=True)
+
+
+def anjiankou():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    # security = ResourceInfo.objects.filter(resource_type='security')
+    ret = DeviceInfo.objects.filter(device_name__icontains='安检')
+    for i in ret:
+        number = i.device_name.split('安检通道')[0]
+        print(number)
+        print(f'安检口{number}')
+        i.resource = ResourceInfo.objects.get(name=f'安检口{number}')
+        i.save()
+
+
+def gate():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    ret = DeviceInfo.objects.filter(device_name__icontains='登机口').order_by('-id')
+    for i in ret:
+        number = i.device_name.split('登机口')[0]
+        number = number.replace('号', '')
+        print(number)
+        try:
+            i.resource = ResourceInfo.objects.get(name=number, resource_type='boarding')
+            i.save()
+        except Exception as e:
+            print(e)
+
+
+def zhilang():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    ret = DeviceInfo.objects.filter(device_name__icontains='登机口', resource=None).order_by('-id')
+    for i in ret:
+        i.resource = ResourceInfo.objects.get(name=number, resource_type='boarding')
+        i.save()
+
+
+def no_ids_gate():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    ret = DeviceInfo.objects.filter(device_name__icontains='指廊').order_by('-id')
+    for i in ret:
+        number = i.device_name.split('登机口')[0].replace('C指廊', '')
+        print(number)
+        try:
+            i.resource = ResourceInfo.objects.get(name=number, resource_type='boarding')
+            i.save()
+        except Exception as e:
+            print(e)
+
+
+def jiwei():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    ret = DeviceInfo.objects.filter(device_name__icontains='南航机坪').order_by('-id')
+    for i in ret:
+        number = i.device_name.split('-')[0].replace('南航机坪', '')
+        print(number)
+        try:
+            i.resource = ResourceInfo.objects.get(name=number, resource_type='placement')
+            i.save()
+        except Exception as e:
+            print(e)
+
+
+def door():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    ret = DeviceInfo.objects.filter(device_name__icontains='安全门').order_by('-id')
+    for i in ret:
+        for r in ResourceInfo.objects.filter(resource_type='passageway'):
+            if not r.deviceinfo_set.all():
+                i.resource = r
+                i.save()
+                break
+
+        # try:
+        #     i.resource = ResourceInfo.objects.get(name=number, resource_type='placement')
+        #     i.save()
+        # except Exception as e:
+        #     print(e)
+
+
+def park():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    # ret = DeviceInfo.objects.filter(device_name__icontains='StableFPS').order_by('-id')
+    # ret = DeviceInfo.objects.filter(device_name__startswith='摄像机').order_by('-id')
+    # ret = DeviceInfo.objects.filter(device_name__startswith='110 - 摄像机').order_by('-id')
+    # ret = DeviceInfo.objects.filter(device_name__startswith='112 - 摄像机').order_by('-id')
+    # ret = DeviceInfo.objects.filter(device_name__startswith='107 - 摄像机').order_by('-id')
+    li = []
+    li += list(DeviceInfo.objects.filter(device_name__startswith='111 - ').order_by('-id'))
+    li += list(DeviceInfo.objects.filter(device_name__startswith='106 - ').order_by('-id'))
+    li += list(DeviceInfo.objects.filter(device_name__startswith='104 - ').order_by('-id'))
+    li += list(DeviceInfo.objects.filter(device_name__startswith='101 - ').order_by('-id'))
+    li += list(DeviceInfo.objects.filter(device_name__startswith='108 - ').order_by('-id'))
+    li += list(DeviceInfo.objects.filter(device_name__startswith='109 - ').order_by('-id'))
+    li += list(DeviceInfo.objects.filter(device_name__startswith='102 - ').order_by('-id'))
+    for i in li:
+        i.resource = ResourceInfo.objects.get(resource_type='park')
+        i.save()
+
+        # try:
+        #     i.resource = ResourceInfo.objects.get(name=number, resource_type='placement')
+        #     i.save()
+        # except Exception as e:
+        #     print(e)
+
+
+def no_dis():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    res = ResourceInfo.objects.all()
+    for i in res:
+        if not i.deviceinfo_set.filter(belong_system='VMS'):
+            print(i)
+            ds = DeviceInfo.objects.filter(resource=None, belong_system='VMS')[0]
+            ds.resource = i
+            ds.save()
+
+
+def snap():
+    from devices.models import DeviceInfo
+    from events.models import DeployPersonSnapRecord
+
+    DeployPersonSnapRecord.objects.filter(id__gte=0, id__lte=10).update(camera=DeviceInfo.objects.get(id=2266))
+    DeployPersonSnapRecord.objects.filter(id__gte=11, id__lte=20).update(camera=DeviceInfo.objects.get(id=1820))
+
+
+def v_code():
+    ret = ""
+    for i in range(6):
+        ret = ret + str(random.randint(0, 9))
+
+    return ret
+
+
+def snap1():
+    from users.models import User
+
+    users = User.objects.filter(is_leader=True)
+    count = 1
+    for user in users:
+        user.staff_name = f'{user.department.department_name}管理员'
+        # user.username = f'10000{count}'
+        user.save()
+        count += 1
+
+
+def flire():
+    import random
+    from datetime import datetime, timedelta
+    from situations.models import ResourceInfo, FlightInfo, FlightResource
+    from devices.models import CameraDevice, DeviceInfo
+
+    # res = ResourceInfo.objects.filter(resource_type='boarding')
+    # res = ResourceInfo.objects.filter(resource_type='baggage')
+    res = ResourceInfo.objects.filter(resource_type='placement')
+    fls = FlightInfo.objects.all()
+
+    for i in res:
+        FlightResource.objects.create(
+            flight=random.choices(list(fls))[0],
+            resource=i,
+            plan_start_time=datetime.now() - timedelta(hours=10),
+            plan_end_time=datetime.now() - timedelta(hours=9),
+            actual_start_time=datetime.now() - timedelta(hours=5),
+            actual_end_time=datetime.now() - timedelta(hours=4),
+        )
+    # res = ResourceInfo.objects.all()
+    # for i in res:
+    #     if not i.deviceinfo_set.filter(belong_system='VMS'):
+    #         print(i)
+    #         ds = DeviceInfo.objects.filter(resource=None, belong_system='VMS')[0]
+    #         ds.resource = i
+    #         ds.save()
+
+
+def device_distribute():
+    pass
+
+
+def no_area():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+
+    # DeviceInfo.objects.exclude(resource__resource_type__in=['maintenance', 'security_hall', 'crossing', 'reverse']).update(resource=None)
+    # res = ResourceInfo.objects.all()
+    # for i in res:
+    #     if not i.deviceinfo_set.all():
+    #         print(i)
+    # ret = DeviceInfo.objects.filter(device_name__icontains='安检')
+    # for i in ret:
+    #     number = i.device_name.split('安检通道')[0]
+    #     print(number)
+    #     print(f'安检口{number}')
+    #     i.resource = ResourceInfo.objects.get(name=f'安检口{number}')
+    #     i.save()
+
+
+
+def add_test_resource():
+    from situations.models import ResourceInfo
+    from devices.models import CameraDevice, DeviceInfo
+    from events.models import AlarmEvent
+    from users.models import Department
+    AlarmEvent.objects.filter(priority=0).update(priority=1)
+
+    # security = ResourceInfo.objects.filter(resource_type='security')
+    # ret = DeviceInfo.objects.filter(device_name__icontains='安检通道')
+    # for i in ret:
+
+
+    # department = Department.objects.filter(devices__in=[1,2,3,4])
+    # print(department.device_set.all())
+
+    # DeviceInfo.objects.filter(resource=None, )
+    # AlarmEvent.objects.filter(priority=0).update(priority=4)
+    # res = ResourceInfo.objects.filter(resource_type='security')
+    # for i in res:
+    #     DeviceInfo.objects.exclude(device_name__icontains='摄像机').filter(belong_system='VMS',
+    #                                                                     resource__resource_type='park')[0:1]
+    #     if not i.deviceinfo_set.all():
+    #         cameras = DeviceInfo.objects.exclude(device_name__icontains='摄像机').filter(belong_system='VMS', resource__resource_type='park')[0:1]
+    #         for z in cameras:
+    #             z.resource = i
+    #             z.save()
+
+    # for camera in cameras_:
+
+    # for index in range(len(res)):
+    #     came = cameras[index]
+    #     resource_id = res[index]
+    #     came.resource_id = resource_id
+    #     came.save()
+
+
+# def test():
+#     from situations.models import ResourceInfo, FlightResource
+#     from devices.models import CameraDevice, DeviceInfo
+#     from events.models import CameraLineUpRecord, PeopleCountingRecord, DeviceAlarmEvent
+#     from datetime import datetime, timedelta
+#     from django.db.models import Count, Sum
+#
+#     res = ResourceInfo.objects.filter(resource_type='maintenance')
+#     for i in res:
+#         print(i)
+
+    # count = 1
+    # for camera in cameras:
+    #     camera.resource_id = res[count]
+    #     camera.save()
+    #     count += 1
+
+    # for i in range(len(res)):
+
+    # CameraDevice.objects.all()
+    # ret = DeviceAlarmEvent.objects.filter(belong_system=DeviceInfo.BelongSystem.MAINTENANCE)
+    # print(ret)
+
+    # ret = CameraLineUpRecord.objects.filter(
+    #     camera__resource__resource_type='security',
+    #     detection_time__gte=datetime.now() - timedelta(minutes=1)
+    # ).aggregate(total_people=Sum('current_queue_number'))
+    # print(ret)
+    # ret = PeopleCountingRecord.objects.filter(
+    #     statistical_time__week_day=6,
+    #     camera__resource__resource_type='security',
+    #     statistical_time__gte=datetime.now().date() - timedelta(days=28),
+    #     statistical_time__lte=datetime.now().date(),
+    # ).extra(select={"time": "DATE_FORMAT(statistical_time, '%%h:%%i:%%s')"}).values('time').annotate(
+    #     total_people=Sum('total_people'))
+    #
+    # print(ret)
+    # for i in ret:
+    #     print(i)
+    # <QuerySet [
+    # {'camera_id': 4647, 'camera__resource__id': 418, 'total_people': 1746},
+    # {'camera_id': 4645, 'camera__resource__id': 420, 'total_people': 1780},
+    # {'camera_id': 4646, 'camera__resource__id': 419, 'total_people': 1729}]>
+
+    # <QuerySet [
+    # {'camera_id': 4647, 'total_people': 1772},
+    # {'camera_id': 4645, 'total_people': 1807},
+    # {'camera_id': 4646, 'total_people': 1752}
+    # ]>
+
+    # <QuerySet [
+    # {'camera__resource__id': 418, 'total_people': 1788},
+    # {'camera__resource__id': 420, 'total_people': 1827},
+    # {'camera__resource__id': 419, 'total_people': 1771}]>
+
+
+def z():
+    # from situations.models import ResourceInfo, FlightInfo
+    from devices.models import CameraDevice
+    # from users.models import Department
+
+    for c in CameraDevice.objects.all():
+        flow_address = c.flow_address
+        c.flow_address = flow_address.replace('237', '17')
+        c.save()
+    # ret = DeviceInfo.objects.get(id='7780')
+    # print(ret)
+    # ret = DeviceInfo.objects.filter(belong_system='VMS')[0:10].select_related('cameradevice')
+    # print(ret.none())
+    # for i in ret:
+    #     print(i.cameradevice.flow_address)
+    # d = Department.objects.get(department_name='信息科')
+    # print(d)
+    # d.device_set.add(*DeviceInfo.objects.all())
+    # DeviceInfo.objects.all()
+    # fs = FlightInfo.objects.all()
+    # for f in fs:
+    #     print(f)
+    #     f.flight_number = f.company + f.flight_number
+    #     f.save()
+    # res = ResourceInfo.objects.all()
+    # for r in res:
+    #     if not r.deviceinfo_set.all():
+    #         print(r)
+    #         d = DeviceInfo.objects.filter(resource__resource_type='park')[0]
+    #         d.resource = r
+    #         d.save()
+
+
+if __name__ == '__main__':
+    z()

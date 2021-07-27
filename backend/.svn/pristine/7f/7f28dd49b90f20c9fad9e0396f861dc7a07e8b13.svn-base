@@ -1,0 +1,179 @@
+"""MQ消息处理的工具类及函数
+
+包含如下：
+time_format_conversion: 时间格式转换的工具函数
+GenericLabelResource: 数据标签数据库相关处理的工具类
+"""
+import datetime
+from collections import OrderedDict
+from multiprocessing import Manager
+
+from security_platform import receive_logger as logger
+
+queue_manager = Manager()
+
+
+def time_format_conversion(date_string):
+    """时间格式转换
+
+    '20171208140658867' 转成 datetime对象
+
+    Args:
+        date_string: 时间字符串
+
+    Returns:
+        date_string: 转换后的datetime对象
+    """
+    if date_string is not None:
+        return datetime.datetime.strptime(date_string, '%Y%m%d%H%M%S%f')
+
+    return date_string
+
+
+class CreateModelMixin:
+    """创建模型接口"""
+
+    def create(self):
+        """新增数据
+
+        Returns:
+            instance: 返回创建后的模型类对象
+        """
+        return self.model_class.objects.create(**self._label_info)
+
+
+class DeleteModelMixin:
+    """删除模型接口"""
+
+    def delete(self):
+        """删除数据"""
+        ret = self.model_class.objects.filter(**self.get_object_kwargs()).delete()
+        logger.info(ret)
+
+
+class UpdateModelMixin:
+    """更新模型接口"""
+
+    def update(self, update_fields=None):
+        """修改数据信息
+
+        Args:
+            update_fields: 要更新的字段，默认为None 全字段更新
+        """
+        if update_fields is not None:
+            ret = self.model_class.objects.filter(**self.get_object_kwargs()).update(
+                **self.get_update_fields(update_fields))
+        else:
+            ret = self.model_class.objects.filter(**self.get_object_kwargs()).update(**self._label_info)
+
+        logger.info(ret)
+
+
+class SyncModelMixin:
+    """同步模型接口"""
+
+    def synchronization(self):
+        """数据整表同步"""
+        self.model_class.objects.update_or_create(**self.get_object_kwargs(), defaults=self._label_info)
+
+
+class GenericLabelResource:
+    """数据标签通用操作类
+
+    通过获取标签数据及调用不同方法来实现对数据进行增删改等模型类的操作
+
+    Class Attributes:
+        model_class: 操作的模型类对象
+
+    Attributes:
+        label: 传入的数据标签
+        action: 数据标签获取的行为，不同action获取数据标签不同的数据字段
+    """
+
+    model_class = None
+
+    def __init__(self, label, action=None):
+        """初始化获取数据标签字段信息"""
+        self.label = label
+        self.action = action
+        self._label_info = OrderedDict()
+
+        self.init_label()
+
+    def validate(self):
+        """子类在这里实现校验的业务逻辑"""
+        pass
+
+    def init_label(self):
+        """初始化标签信息"""
+        self.validate()
+
+        if self.action is None:
+            self.set_label_info()
+        else:
+            set_label_function = self.source.get(self.action)
+            assert set_label_function is not None, f'{self.__class__.__name__} not found {self.action} in source'
+            set_label_function()
+
+    @property
+    def source(self):
+        """获取action对应的标签数据解析函数字典
+
+        初始化时传入不同的action，执行不同的数据字段获取函数
+        """
+        return {}
+
+    def set_label_info(self):
+        """子类在这里实现获取标签数据的逻辑"""
+        self._label_info = {}
+
+    def get_object_kwargs(self):
+        """查找数据对象时的过滤条件"""
+        return {}
+
+    def get_update_fields(self, update_fields):
+        """获取要更新的字段"""
+        update_fields_dict = OrderedDict()
+        for key, value in self._label_info.items():
+            if key in update_fields:
+                update_fields_dict[key] = value
+
+        logger.info(update_fields_dict)
+        return update_fields_dict
+
+
+class CommonLabelResource(GenericLabelResource,
+                          CreateModelMixin,
+                          DeleteModelMixin,
+                          UpdateModelMixin,
+                          SyncModelMixin):
+    """数据标签增/删/更新/整表同步"""
+    pass
+
+
+class CreateUpdateDeleteLabelResource(GenericLabelResource,
+                                      CreateModelMixin,
+                                      DeleteModelMixin,
+                                      UpdateModelMixin):
+    """数据标签增/删/更新/"""
+    pass
+
+
+class CreateUpdateLabelResource(GenericLabelResource, CreateModelMixin, UpdateModelMixin):
+    """数据标签增/更新/"""
+    pass
+
+
+class CreateLabelResource(GenericLabelResource, CreateModelMixin):
+    """数据标签增加"""
+    pass
+
+
+class SyncLabelResource(GenericLabelResource, SyncModelMixin):
+    """数据标签同步或更新"""
+    pass
+
+
+class UpdateLabelResource(GenericLabelResource, UpdateModelMixin):
+    """数据标签更新"""
+    pass

@@ -1,0 +1,59 @@
+"""
+日志自动切割
+"""
+import os
+import shutil
+from datetime import datetime
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class LogCutter:
+
+    def __init__(self, src_log_path=None, dest_log_path=None, expire_days=30):
+        self.src_log_path = src_log_path or os.path.join(BASE_DIR, 'logs')
+        self.dest_log_path = dest_log_path or '/var/log/sms'
+        self.expire_days = expire_days
+        self.backup_path = os.path.join(self.dest_log_path, str(self.current_date))
+
+    @property
+    def current_date(self):
+        if not hasattr(self, '_current_date'):
+            self._current_date = datetime.now().date()
+
+        return self._current_date
+
+    def mkdir(self):
+        """创建var下面的文件夹"""
+        os.makedirs(self.backup_path, exist_ok=True)
+
+    def backup(self):
+        """logs下面的文件移到var下面"""
+        for file in os.listdir(self.src_log_path):
+            if '.log' in file:
+                file_path = os.path.join(self.src_log_path, file)
+                os.system(f'cp -rf {file_path} {self.backup_path};rm -rf {file_path}')
+
+    def delete(self):
+        """删除历史日志备份"""
+        for log_dir in os.listdir(self.dest_log_path):
+            try:
+                file_date = datetime.strptime(log_dir, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                # 非日期命名的文件夹
+                continue
+
+            if (self.current_date - file_date).days > self.expire_days:
+                shutil.rmtree(os.path.join(self.dest_log_path, log_dir))
+
+    def cut(self):
+        """进行日志切割"""
+        self.mkdir()
+        self.backup()
+        self.delete()
+        os.system('touch /Users/lwl/Desktop/work/svn_/SMS/backend/security_platform/logs/doRollover')
+
+
+if __name__ == '__main__':
+    c = LogCutter(dest_log_path='/Users/lwl/Desktop/work/svn_/SMS/backend/security_platform/logs/sms/', expire_days=1)
+    c.cut()

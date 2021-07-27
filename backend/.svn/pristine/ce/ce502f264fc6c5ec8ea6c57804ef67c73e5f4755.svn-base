@@ -1,0 +1,14 @@
+import xadmin
+
+from . import models
+
+xadmin.site.register(models.AlarmEvent)
+xadmin.site.register(models.DeviceAlarmEvent)
+xadmin.site.register(models.PersonAlarmEvent)
+xadmin.site.register(models.DeployAlarmRecord)
+xadmin.site.register(models.DeployPersonSnapRecord)
+xadmin.site.register(models.DeviceAlarmEventPicture)
+xadmin.site.register(models.DeviceAlarmEventCamera)
+xadmin.site.register(models.PersonDensityRecord)
+xadmin.site.register(models.BehaviorAlarmRecord)
+xadmin.site.register(models.PlaceAlarmRecord)

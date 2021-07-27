@@ -1,0 +1,129 @@
+import datetime
+from collections import OrderedDict
+
+from django.db.models import F
+
+from utils import GenericLabelResource, CreateModelMixin
+from exceptions import InvalidFiledError, NoProcessingError
+from situations.models import PeopleCountingRecord, ResourceInfo
+
+
+def time_transform(detection_time):
+    """报警时间转化
+
+    3种时间情况
+    1：整点时间，取本身时间值
+    2：非整点时间，取本身时间下个小时值
+    3：超过23点的时间数据处理为23点59分59秒
+
+    Args:
+        detection_time: 报警时间
+
+    Returns:
+        detection_time: 统计时间
+    """
+    detection_time = datetime.datetime.fromtimestamp(detection_time)
+
+    # 统计时间参数，分秒毫秒默认为0
+    statistical_kwargs = OrderedDict(
+        year=detection_time.year,
+        month=detection_time.month,
+        day=detection_time.day,
+        hour=detection_time.hour
+    )
+
+    if detection_time.minute != 0 or detection_time.second != 0 or detection_time.microsecond != 0:
+        # 非整点时间
+
+        if detection_time.hour != 23:
+            statistical_kwargs['hour'] += 1
+        else:
+            # 24点 == 23点59分59秒
+            statistical_kwargs['minute'] = 59
+            statistical_kwargs['second'] = 59
+
+    statistical_time = datetime.datetime(**statistical_kwargs)
+
+    return statistical_time
+
+
+class GenericSituationResource(GenericLabelResource):
+    """资源通用"""
+
+    resource_obj = None
+
+    @property
+    def only_fields(self):
+        return ['id']
+
+    def validate(self):
+        try:
+            self.resource_obj = ResourceInfo.objects.only(*self.only_fields).get(name=self.label['areaName'])
+        except KeyError:
+            raise InvalidFiledError('缺少参数areaName')
+        except ResourceInfo.DoesNotExist:
+            raise InvalidFiledError(f'资源对象不存在 {self.label["areaName"]}')
+
+    def set_label_info(self):
+        self._label_info['resource'] = self.resource_obj
+
+
+class PeopleCountingResource(GenericSituationResource):
+    """人数统计资源"""
+
+    model_class = PeopleCountingRecord
+
+    def validate(self):
+        super().validate()
+
+        if not self.label['upGoing']:
+            raise NoProcessingError('非上行方向人员，不处理')
+
+    def set_label_info(self):
+        """配置参数"""
+        super().set_label_info()
+
+        self._label_info['statistical_time'] = time_transform(self.label['time'])
+
+    def synchronization(self):
+        """人数同步"""
+        try:
+            obj = self.model_class.objects.only('id').get(**self._label_info)
+
+            obj.total_people = F('total_people') + 1
+            obj.save(update_fields=['total_people'])
+        except self.model_class.DoesNotExist:
+            obj = self.model_class(**self._label_info)
+            obj.save()
+
+
+class LineUpResource(GenericSituationResource):
+    """排队数据处理"""
+
+    def update(self):
+        self.resource_obj.current_queue_number = self.label['areaNum']
+        self.resource_obj.save(update_fields=['current_queue_number'])
+
+
+class DensityAlarmResource(GenericLabelResource, CreateModelMixin):
+    """密度报警记录"""
+    pass
+
+    # camera = None
+    # model_class = PersonDensityRecord
+
+    # def validate(self):
+    #     try:
+    #         self.camera = CameraDevice.objects.only('id').get(device_code=self.label['deviceCode'])
+    #     except KeyError:
+    #         raise InvalidFiledError('缺少参数 deviceCode')
+    #     except CameraDevice.DoesNotExist:
+    #         raise InvalidFiledError(f'摄像机编号不存在 {self.label["deviceCode"]}')
+
+    # def set_label_info(self):
+    #     """配置参数"""
+    #     self._label_info['alarm_time'] = datetime.datetime.fromtimestamp(self.label['time'])
+    #     self._label_info['alarm_image_url'] = self.label['areaImage']
+    #     self._label_info['alarm_level'] = self.label['areaLevel'] + 1
+    #     self._label_info['total_people_number'] = self.label['areaNum']
+    #     self._label_info['camera'] = self.camera

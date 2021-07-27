@@ -1,0 +1,8 @@
+# MQTT消息服务质量等级
+MQTT_QOS_LEVEL = 1
+
+# 视频监控系统代码
+VIDEO_MONITORING_CODE = 'VMS'
+
+# 服务检测redis有效期
+SERVER_CHECK_REDIS_EXPIRES = 3600

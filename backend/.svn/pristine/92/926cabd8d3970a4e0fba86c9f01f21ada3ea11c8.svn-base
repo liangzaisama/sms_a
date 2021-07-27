@@ -1,0 +1,46 @@
+"""
+报警超过30分钟已上且无工单的自动上报事件，进行自动关闭该事件
+"""
+from datetime import datetime, timedelta
+
+import django
+from django.db import connection
+
+from manage import set_django_module
+set_django_module()
+django.setup()
+
+from security_platform import config_parser, cron_logger as logger
+from events.models import AlarmEvent, DeviceAlarmEvent
+
+
+def close_expire_event():
+    """
+    0.自动上报
+    1.状态待处置
+    2.创建时间在30分钟以上
+    3.无工单流程
+    设置工单状态为已解除
+    """
+    logger.info('close_expire_event')
+    latest_time = datetime.now() - timedelta(seconds=int(config_parser.get('CRON', 'EVNET_AUTO_CLOSE_TIME')))
+
+    execute_sql = f"""
+        update tb_basic_alarm_event set event_state='{DeviceAlarmEvent.EventState.RELIEVED}' where id in (
+            select ret.id from (
+                select event.id from tb_basic_alarm_event event left join tb_event_work_sheet as sheet 
+                on sheet.alarm_event_id=event.id 
+                where event.event_type={AlarmEvent.EventType.DEVICE} 
+                and event.event_state='{DeviceAlarmEvent.EventState.UNDISPOSED}'
+                and event.create_time < '{latest_time}'
+                and sheet.id is null
+            ) ret 
+        );
+    """
+
+    with connection.cursor() as cursor:
+        update_count = cursor.execute(execute_sql)
+        logger.info('关闭报警事件%s个', update_count)
+
+
+close_expire_event()

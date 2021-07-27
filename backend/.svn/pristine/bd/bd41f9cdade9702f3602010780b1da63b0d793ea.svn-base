@@ -1,0 +1,45 @@
+import os
+import random
+import sys
+
+import numpy
+import django
+from django.conf import settings
+
+file_path = os.path.abspath(__file__)
+base_dir = os.path.dirname(file_path)
+sys.path.insert(0, os.path.join(os.path.dirname(base_dir)))
+
+from manage import set_django_module
+
+if not os.getenv('DJANGO_SETTINGS_MODULE'):
+    set_django_module()
+    django.setup()
+
+import logging
+logger = logging.getLogger('django')
+logger.setLevel('DEBUG')
+
+
+def get_export_data(file_path=settings.API_SETTINGS.EXPORT_PATH, **kwargs):
+    """读取excel数据"""
+    import pandas as pd
+    import numpy
+    data = pd.read_excel(file_path, 'areas')
+    area_dict = {}
+    for i in data.index:
+        ret = (dict(data.loc[i]))
+        area_dict[ret['编号']] = ret['短名称']
+    print(area_dict)
+    camera_data = pd.read_excel(file_path, 'camera')
+    for i in camera_data.index:
+        area_code = camera_data.loc[i].area_code
+        if isinstance(area_code, (numpy.int64, int)):
+            # print(area_code)
+            camera_data.loc[camera_data.area_code == area_code, 'area_code'] = area_dict[area_code]
+
+
+from events.models import AlarmEvent, EventWorkSheet
+
+eve = AlarmEvent.objects.get(id=246538)
+EventWorkSheet.objects.all().update(alarm_event=eve)

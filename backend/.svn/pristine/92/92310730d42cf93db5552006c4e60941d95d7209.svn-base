@@ -1,0 +1,210 @@
+"""
+视频分析实时消息
+"""
+import datetime
+from collections import OrderedDict
+
+from django.db.models import F
+
+from operations.models import EntranceAccessRecords
+from security_platform.utils.commen import blank_get
+from situations.models import PassageWayCarPassThrough
+from events.models import DeployPersonSnapRecord, PeopleCountingRecord, CameraLineUpRecord, PlaceSafeguardRecord
+
+from utils.exceptions import NoProcessingError
+from views.analysis import AnalysisDataMixin
+from core.generics import (
+    CreateLabelResource, SyncLabelResource, time_format_conversion
+)
+
+
+class LineupCurrentAnalysisResource(AnalysisDataMixin, SyncLabelResource):
+    """排队实时"""
+
+    son_label = 'passenger'
+    model_class = CameraLineUpRecord
+
+    def get_object_label(self):
+        return {'camera': self.device}
+
+    def get_sync_label(self):
+        return {
+            'current_queue_number': self.label[self.son_label]['analyzerResult']['areaNum'],
+            'detection_time': self.get_time(),
+            'camera': self.device
+        }
+
+    def synchronization(self):
+        instance, _ = super().synchronization()
+        self.publish_obj_ws_message(instance)
+
+        return instance
+
+
+class PeopleCountingAnalysisResource(AnalysisDataMixin, SyncLabelResource):
+    """人数统计实时"""
+
+    son_label = 'passenger'
+    model_class = PeopleCountingRecord
+
+    def time_transform(self, detection_time):
+        """报警时间转化
+
+        3种时间情况
+        1：整点时间，取本身时间值
+        2：非整点时间，取本身时间下个小时值
+        3：超过23点的时间数据处理为23点59分59秒
+
+        Args:
+            detection_time: 报警时间
+
+        Returns:
+            detection_time: 统计时间
+        """
+        # detection_time = datetime.datetime.fromtimestamp(detection_time)
+
+        # 统计时间参数，分秒毫秒默认为0
+        statistical_kwargs = OrderedDict(
+            year=detection_time.year,
+            month=detection_time.month,
+            day=detection_time.day,
+            hour=detection_time.hour
+        )
+
+        if detection_time.minute != 0 or detection_time.second != 0 or detection_time.microsecond != 0:
+            # 非整点时间
+
+            if detection_time.hour != 23:
+                statistical_kwargs['hour'] += 1
+            else:
+                # 24点 == 23点59分59秒
+                statistical_kwargs['minute'] = 59
+                statistical_kwargs['second'] = 59
+
+        statistical_time = datetime.datetime(**statistical_kwargs)
+
+        return statistical_time
+
+    def get_sync_label(self):
+        """配置参数"""
+        if not self.label[self.son_label]['result']['data']['upgoing']:
+            raise NoProcessingError('非上行方向人员，不处理')
+
+        label = OrderedDict()
+        # label['resource'] = self.resource
+        label['camera'] = self.device
+        self.label[self.son_label]['time'] = self.label[self.son_label]['result']['time']
+        label['statistical_time'] = self.time_transform(self.get_time())
+
+        return label
+
+    def synchronization(self):
+        """人数同步"""
+        label = self.get_sync_label()
+
+        try:
+            obj = self.model_class.objects.only('id').get(**label)
+
+            obj.total_people = F('total_people') + 1
+            obj.save(update_fields=['total_people'])
+        except self.model_class.DoesNotExist:
+            obj = self.model_class(**label)
+            obj.save()
+
+        return obj
+
+
+class WebsocketCreateLabelResource(CreateLabelResource):
+
+    def create(self):
+        instance = super().create()
+        self.publish_obj_ws_message(instance)
+
+        return instance
+
+
+class DeploySnapAnalysisResource(AnalysisDataMixin, WebsocketCreateLabelResource):
+    """布控抓拍"""
+
+    son_label = 'person_monitor'
+    model_class = DeployPersonSnapRecord
+
+    def get_create_label(self):
+        label = OrderedDict()
+        # label['resource'] = self.resource
+        label['camera'] = self.device
+        label['snap_time'] = self.get_time()
+        label['snap_image_url'] = self.label[self.son_label]['imgUrl']
+
+        return label
+
+
+class PlaceSafeguardResource(AnalysisDataMixin, WebsocketCreateLabelResource):
+    """机位保障"""
+
+    son_label = 'apron'
+    model_class = PlaceSafeguardRecord
+    state_enum = {1: '飞机入位', 0: '飞机离位'}
+
+    def get_create_label(self):
+        self.label[self.son_label]['time'] = self.label[self.son_label]['result']['time']
+
+        label = OrderedDict()
+        label['camera'] = self.device
+        label['safeguard_time'] = self.get_time()
+        label['safeguard_name'] = self.state_enum[self.label[self.son_label]['result']['state']]
+
+        if self.resource:
+            # 存在对应机位
+            queryset = self.resource.flightresource_set.filter(is_using=True).order_by(
+                '-actual_start_time', '-plan_start_time')
+
+            if queryset:
+                label['flight'] = queryset[0].flight
+
+        return label
+
+
+class CrossingTrafficResource(WebsocketCreateLabelResource):
+    """道口车辆出入信息"""
+
+    model_class = PassageWayCarPassThrough
+
+    def get_create_label(self):
+        label = OrderedDict()
+        label['passageway_name'] = self.label['crossing_name']
+        label['passageway_device_code'] = self.label['device_code']
+        label['passage_time'] = time_format_conversion(self.label['record_time'])
+        label['car_number'] = self.label['car_number']
+        label['direction'] = self.label['car_direction']
+        label['car_number_image_url'] = self.label['picture_paths'][0]
+        label['car_positive_image_url'] = self.label['picture_paths'][1]
+        label['car_bottom_image_url'] = self.label['picture_paths'][2]
+        label['car_bottom_image_url'] = self.label['picture_paths'][2]
+        label['is_allowed'] = self.label['pass_status'] != '3'
+
+        return label
+
+
+class EntranceSlotCardResource(WebsocketCreateLabelResource):
+    """门禁设备刷卡记录"""
+
+    model_class = EntranceAccessRecords
+
+    def get_create_label(self):
+        """设置标签值"""
+        self.validate_enum_filed('in_out', EntranceAccessRecords.InOutChoice.values)
+
+        label = OrderedDict()
+        label['entrance_punch_code'] = self.label['entrance_punch_code']
+        label['device_code'] = self.label['device_code']
+        label['record_time'] = time_format_conversion(self.label['record_time'])
+        label['card_no'] = self.label['card_no']
+        label['holder'] = self.label['holder']
+        label['department'] = blank_get(self.label, 'department')
+        label['code_name'] = blank_get(self.label, 'code_name')
+        label['jobs'] = blank_get(self.label, 'jobs')
+        label['in_out'] = self.label['in_out']
+        label['region_id'] = self.label['region_id']
+
+        return label

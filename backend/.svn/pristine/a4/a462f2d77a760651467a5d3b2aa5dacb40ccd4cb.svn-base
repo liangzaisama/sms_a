@@ -1,0 +1,25 @@
+import time
+from threading import Thread
+
+from core import esb_send_msg_queue
+from core.worker import EsbPublishWorker
+from esb.esb_data_package import esb_msg_package
+
+
+class EsbInitPublishMsgThread(Thread):
+
+    def run(self):
+        for data in esb_msg_package.initial_request_data:
+            esb_send_msg_queue.put(data)
+
+            # 发送请求需要间隔11s，不然会发送请求消息失败
+            time.sleep(11)
+
+
+def send_msg_to_esb():
+    """发送数据到esb"""
+    # 发送基础请求事件
+    EsbInitPublishMsgThread().start()
+
+    # 开始处理给航班系统发送的额消息
+    EsbPublishWorker().loop_forever(esb_send_msg_queue)

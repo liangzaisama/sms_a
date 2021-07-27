@@ -1,0 +1,30 @@
+import datetime
+from redis import RedisError
+
+from utils.exceptions import StorageMsgMetricsError
+
+from security_platform import cache_redis_conn
+
+
+class MetricsStorage:
+
+    def storage(self, collected_name):
+        raise NotImplementedError('method storage() must be Implemented')
+
+
+class RedisMetricsStorage(MetricsStorage):
+
+    metrics_key_name = 'system_metrics_{date}'
+
+    @property
+    def current_date(self):
+        if not hasattr(self, '_current_date'):
+            self._current_date = datetime.datetime.now().date()
+
+        return self._current_date
+
+    def storage(self, collected_name):
+        try:
+            cache_redis_conn.hincrby(self.metrics_key_name.format(date=self.current_date), collected_name)
+        except RedisError as exc:
+            raise StorageMsgMetricsError(exc)

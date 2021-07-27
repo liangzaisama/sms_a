@@ -1,0 +1,13 @@
+"""
+系统配置序列化器
+"""
+from rest_framework import serializers
+
+from security_platform.utils.serializer import CustomSerializer
+
+
+class ConfigSerializer(CustomSerializer):
+
+    security_speed = serializers.IntegerField(label='安检速度', max_value=300, min_value=1)
+    event_delete = serializers.IntegerField(label='报警事件保留时间', max_value=365, min_value=1)
+    event_close = serializers.IntegerField(label='报警事件自动关闭时间', max_value=100, min_value=1)

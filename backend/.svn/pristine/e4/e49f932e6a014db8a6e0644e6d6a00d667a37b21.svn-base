@@ -1,0 +1,67 @@
+import os
+import sys
+import time
+import datetime
+
+import django
+from django_redis import get_redis_connection
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(BASE_DIR))
+sys.path.insert(1, os.path.join(os.path.dirname(BASE_DIR)))
+
+try:
+    from manage import set_django_module
+
+    if not os.getenv('DJANGO_SETTINGS_MODULE'):
+        set_django_module()
+        django.setup()
+
+    from security_platform import logger, config_parser
+    from security_platform.utils.commen import publish_message
+    from mqtt_receive.constants import MQTT_QOS_LEVEL
+    from mqtt_receive.topic import RECEIVE_SERVER_CHECK_TOPIC
+    from programctl import main as ctl_main, ServerNameEnum
+except ImportError:
+    raise ImportError("Couldn't import DJANGO_SETTINGS_MODULE")
+
+
+def query_message(message_key):
+    """查询redis消息"""
+    redis_conn = get_redis_connection()
+
+    for _ in range(5):
+        if redis_conn.get(message_key):
+            return True
+
+        time.sleep(0.1)
+
+
+def check_receive_mq_server_status():
+    """mq校验"""
+    payload = datetime.datetime.now()
+    publish_message(RECEIVE_SERVER_CHECK_TOPIC, payload)
+
+    return query_message(payload)
+
+
+def restart_mq_server():
+    """重启mq脚本"""
+    logger.info('开始重启MQ定时检测脚本')
+    # ctl_main({'restart': ServerNameEnum.MQ_SERVER_NAME})
+    logger.info('重启MQ定时检测脚本成功')
+
+
+def main():
+    """入口函数"""
+    for _ in range(5):
+        if check_receive_mq_server_status():
+            return True
+
+        logger.info('为查询到MQ消息')
+
+    restart_mq_server()
+
+
+if __name__ == '__main__':
+    main()

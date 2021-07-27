@@ -1,0 +1,129 @@
+import os
+import sys
+import requests
+
+import django
+from django.db import transaction
+
+if not os.getenv('DJANGO_SETTINGS_MODULE'):
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, os.path.join(BASE_DIR))
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'security_platform.settings.dev'
+    django.setup()
+
+from security_platform import config_parser
+from device_management.models import DeviceInfo
+from organization.models import AreaInfo, FloorInfo
+
+
+def import_floor_data():
+    """导入楼层数据"""
+
+    floor_data = ['1F', '2F', '3F', '4F', 'B1', 'B2']
+
+    with transaction.atomic():
+        save_id = transaction.savepoint()
+        try:
+            for i in floor_data:
+                if not FloorInfo.objects.filter(floor_name=i):
+                    FloorInfo.objects.create(floor_name=i)
+                else:
+                    print('重复数据')
+        except Exception as e:
+            transaction.savepoint_rollback(save_id)
+            raise e
+        else:
+            transaction.savepoint_commit(save_id)
+            print('导入楼层数据成功')
+
+
+def import_area_data():
+    """导入区域数据"""
+    area_list = ['飞行区', '航站区']
+
+    with transaction.atomic():
+        save_id = transaction.savepoint()
+        try:
+            for index in range(len(area_list)):
+                if not AreaInfo.objects.filter(area_name=area_list[index]):
+                    AreaInfo.objects.create(area_name=area_list[index], area_code=index, floor_id=1)
+                else:
+                    print('重复数据')
+        except Exception as e:
+            transaction.savepoint_rollback(save_id)
+            raise e
+        else:
+            transaction.savepoint_commit(save_id)
+            print('导入区域数据成功')
+
+
+def request_zvams(url, token=None):
+    """
+    调用webapi
+    """
+    VIDEO_SUPERVISION_SERVER = config_parser.get('CAMERA', 'CAMERA_SERVER')
+
+    try:
+        if not token:
+            response = requests.post(url='http://192.168.20.3:8004/' + url, data={'username': 'admin', 'password': 'admin'})
+        else:
+            response = requests.get(url=VIDEO_SUPERVISION_SERVER + url, headers={'Authorization': token})
+
+        response_data = response.json()
+    except Exception as e:
+        print('获取数据失败: %s' % e)
+        return
+
+    print(response_data)
+    if response_data.get('result') == 'error':
+        print('获取数据失败: %s' % response_data['errorMessage'])
+        return
+
+    return response_data
+
+
+def import_camera_data():
+    """
+    导入摄像头数据
+    """
+    # 获取token
+    response_data = request_zvams('/userlogin')
+    token = response_data['accessToken']
+
+    # 获取实体类型
+    response_data = request_zvams('/vms/entityTypes', token)
+    Camera = response_data['data']['Camera']
+
+    # 获取摄像头
+    response_data = request_zvams(f'/vms/entitys/{Camera}', token)
+
+    with transaction.atomic():
+        save_id = transaction.savepoint()
+        try:
+            for video in response_data['data']:
+                if not DeviceInfo.objects.filter(device_code=video['entityId']):
+                    camera = DeviceInfo.objects.create(
+                        device_name=video['entityName'],
+                        device_code=video['entityId'],
+                        device_type='cctv',
+                        belong_system='VMS',
+                        area_id=1,
+                        device_state='normal' if video['isOnline'] else 'unavailable',
+                        vms_entity_type_id=video['entityTypeId'],
+                        vms_entity_type_name=video['entityTypeName'],
+                        flow_address=video['Propertys']['rtsp'],
+                        is_ptz=True if video['Propertys']['PTZ'] == 'YES' else False
+                    )
+                    print(camera.id)
+                else:
+                    print('实体id重复')
+        except Exception as e:
+            transaction.savepoint_rollback(save_id)
+            raise e
+        else:
+            transaction.savepoint_commit(save_id)
+            print('导入摄像头数据成功')
+
+
+if __name__ == '__main__':
+    import_camera_data()

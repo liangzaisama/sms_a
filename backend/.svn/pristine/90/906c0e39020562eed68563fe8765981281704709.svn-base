@@ -1,0 +1,120 @@
+"""MQ消息处理程序入口文件
+
+main 入口函数，程序执行时调用此函数
+ProcessManager 进程管理，负责消息处理worker和websocket进程连接的进程创建及监控
+
+Examples:
+    main()
+"""
+import os
+import sys
+import time
+
+import django
+
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(base_dir))
+
+try:
+    from manage import set_django_module
+    set_django_module()
+    django.setup()
+
+    from security_platform import config_parser, receive_logger as logger
+
+    from utils.topic import SUBSCRIBE_TOPIC
+    from core.client import callback, MessageQueueClient
+    from process import ProcessTypeEnum, ProcessFactory
+except ImportError:
+    raise ImportError("Couldn't import DJANGO_SETTINGS_MODULE")
+
+
+class ProcessManager:
+    """进程管理
+
+    负责事件消息处理worker类和websocket连接的进程创建及监控
+    """
+    monitor_interval = 5
+
+    def __init__(self, process_types):
+        """初始化"""
+        self._processes = []
+        self._process_types = process_types
+        self._factory = ProcessFactory()
+
+    @property
+    def process_types(self):
+        return self._process_types
+
+    @property
+    def process(self):
+        return self._processes
+
+    def _register_mq_worker(self):
+        for registry in callback.registry_list:
+            callback_class = getattr(callback, registry.class_name)
+
+            if issubclass(callback_class, callback.MultiprocessMessageCallback):
+                # 只处理多进程消息worker
+                for _ in range(registry.process_count):
+                    process = self._factory.create_process(process_type=ProcessTypeEnum.MQ_WORKER,
+                                                           msg_worker=registry.worker, queue=registry.queue)
+                    self._processes.append(process)
+
+    def _register(self):
+        for process_type in self._process_types:
+            if process_type == ProcessTypeEnum.MQ_WORKER:
+                self._register_mq_worker()
+            else:
+                self._processes.append(self._factory.create_process(process_type=process_type))
+
+    def _monitor(self):
+        """子进程监控
+
+        每5秒中执行依次，无限循环
+        如果进程死亡，将新的进程添加到进程列表，将死亡的进程剔除
+        """
+        while True:
+            copy_process_list = self._processes.copy()
+
+            for process in self._processes:
+                if not process.is_alive():
+                    logger.error('die process %s', process)
+                    new_process = self._factory.create_process(**process.kwargs)
+                    logger.info('new process %s', new_process)
+                    process.terminate()
+
+                    copy_process_list.remove(process)
+                    copy_process_list.append(new_process)
+
+            self._processes = copy_process_list
+            time.sleep(self.monitor_interval)
+
+    def start(self):
+        self._register()
+        self._monitor()
+
+
+def main():
+    """入口函数"""
+    # 开启mq连接
+    mq_client = MessageQueueClient(SUBSCRIBE_TOPIC, callback.registry_list)
+    mq_client.connect(
+        int(config_parser.get('MQTT', 'MQTT_PORT')),
+        config_parser.get('MQTT', 'MQTT_SERVER_IP'),
+        config_parser.get('MQTT', 'MQTT_USER'),
+        config_parser.get('MQTT', 'MQTT_PWD')
+    )
+
+    # 创建消息处理进程
+    process_types = [
+        ProcessTypeEnum.MQ_WORKER,
+        ProcessTypeEnum.ESB_PUBLISH,
+        # ProcessTypeEnum.ESB_RECEIVE,
+    ]
+
+    ProcessManager(process_types).start()
+
+
+if __name__ == '__main__':
+    main()

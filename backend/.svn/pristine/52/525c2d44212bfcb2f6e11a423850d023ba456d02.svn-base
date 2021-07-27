@@ -1,0 +1,902 @@
+"""事件模块api
+
+包含事件上报、事件统计、事件记录、事件导出相关接口
+"""
+
+import math
+import datetime
+from collections import OrderedDict
+
+from six import BytesIO
+from xlwt import Workbook
+from dateutil.relativedelta import relativedelta
+from django.core.cache import cache
+from django.db.models.aggregates import Sum
+from django.db import connection
+from django.http import HttpResponse
+from rest_framework.decorators import action
+from rest_framework.exceptions import MethodNotAllowed
+
+from security_platform import ErrorType
+from security_platform.utils import views
+from security_platform.utils.commen import datetime_to_str
+from security_platform.utils.filters import CustomDjangoFilterBackend
+from security_platform.utils.viewsets import CustomModelViewSet
+from devices.models import DeviceInfo
+from events import models
+from events import serializers
+from events.models import AlarmEvent, DeviceAlarmEvent, PersonAlarmEvent
+from events.utils import EventStatistics, HistoryStatistics
+from situations.filter import DeployAlarmFilter
+from situations.models import ResourceInfo
+
+
+class AlarmEventViewSet(CustomModelViewSet):
+    """
+    安保事件视图集
+    """
+    serializer_class = serializers.AlarmEventSerializer
+    queryset = AlarmEvent.objects.all()
+
+    def __init__(self, **kwargs):
+        self.HistoryStatistics = HistoryStatistics
+        self.EventStatistics = EventStatistics
+        self.filter_data = None
+        self._data = None
+        self.instance = None
+        self.event_days_data = []
+        self.count_days_list = []
+        self.event_months_data = []
+        self.count_months_list = []
+        super().__init__(**kwargs)
+
+    def filter_queryset(self, queryset):
+        """
+        过滤查询集
+        """
+        if self.filter_data:
+            filter_data = self.filter_data
+
+            if 'event_name' in filter_data:
+                filter_data['event_name__contains'] = filter_data.pop('event_name')
+
+            if 'event_code' in filter_data:
+                filter_data['event_code__contains'] = filter_data.pop('event_code')
+
+            if filter_data.get('start_time'):
+                filter_data['alarm_time__gte'] = filter_data.pop('start_time')
+
+            if filter_data.get('end_time'):
+                filter_data['alarm_time__lte'] = filter_data.pop('end_time')
+
+            query_set = queryset.filter(**filter_data).order_by('-alarm_time')
+        else:
+            query_set = super().filter_queryset(queryset).order_by('-alarm_time')
+
+        return query_set
+
+    def get_serializer_class(self):
+        """根据场景值返回对应的序列化器类"""
+        if self.filter_data is None or self.filter_data.get('event_type') is None:
+            return self.serializer_class
+        elif self.filter_data['event_type'] == AlarmEvent.EventType.DEVICE:
+            return serializers.DeviceAlarmEventSerializer
+        elif self.filter_data['event_type'] == AlarmEvent.EventType.ARTIFICIAL:
+            return serializers.PersonAlarmEventSerializer
+        else:
+            return self.serializer_class
+
+    def get_queryset(self):
+        """根据场景值返回对应的查询集"""
+        if self.filter_data is None or self.filter_data.get('event_type') is None:
+            return self.queryset
+        elif self.filter_data['event_type'] == AlarmEvent.EventType.DEVICE:
+            return DeviceAlarmEvent.objects.all()
+        elif self.filter_data['event_type'] == AlarmEvent.EventType.ARTIFICIAL:
+            return PersonAlarmEvent.objects.all()
+        else:
+            # 事件类型待定 先返回基础报警事件
+            return self.queryset
+
+    def list(self, request, *args, **kwargs):
+        """
+        事件列表
+        """
+
+        serializer = self.get_serializer(data=request.query_params, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.filter_data = serializer.validated_data
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """获取事件组详情"""
+        instance = self.get_object()
+
+        if instance.event_state in DeviceAlarmEvent.EventState:
+            # 系统报警事件
+            self.serializer_class = serializers.DeviceAlarmEventSerializer
+        elif instance.event_state in PersonAlarmEvent.EventState:
+            # 人工上报事件
+            self.serializer_class = serializers.PersonAlarmEventSerializer
+
+        self.queryset = self.serializer_class.Meta.model.objects.only('id').all()
+        instance = self.get_object()
+
+        # 序列化
+        serializer = self.get_serializer(instance)
+
+        return self.success_response(data=serializer.data)
+
+    @action(methods=['get'], detail=False)
+    def exports(self, request, *args, **kwargs):
+        """导出当前页数据为excel文件"""
+        list_response = self.list(request, *args, **kwargs)
+        data = list_response.data['data']['objects']
+        if not data:
+            return self.structure_empty_excel_data()
+
+        self._data = data
+
+        ws = self.structure_excel_data()
+        sio = BytesIO()
+        ws.save(sio)
+        sio.seek(0)
+
+        response = HttpResponse(content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'attachment; filename={0}'.format('alarm_event_info.xls')
+        response.write(sio.getvalue())
+
+        return response
+
+    @action(methods=['patch'], detail=True)
+    def audit(self, request, *args, **kwargs):
+        """人工上报事件审核"""
+        self.serializer_class = serializers.AuditAlarmEventSerializer
+        self.queryset = self.serializer_class.Meta.model.objects.only('id').all()
+        request.data['event_state'] = PersonAlarmEvent.EventState.AUDITED
+        return super().update(request, *args, **kwargs)
+
+    @action(methods=['patch'], detail=True)
+    def confirm(self, request, *args, **kwargs):
+        """系统报警事件确认"""
+        self.serializer_class = serializers.DeviceAlarmConfirmEventSerializer
+        self.queryset = self.serializer_class.Meta.model.objects.only('id').all()
+        request.data['event_state'] = DeviceAlarmEvent.EventState.UNCONFIRMED
+        return super().update(request, *args, **kwargs)
+
+    @action(methods=['patch'], detail=True)
+    def dispose(self, request, *args, **kwargs):
+        """系统报警事件处置"""
+        self.serializer_class = serializers.DeviceAlarmDisposeEventSerializer
+        self.queryset = self.serializer_class.Meta.model.objects.only('id').all()
+        request.data['event_state'] = DeviceAlarmEvent.EventState.RELIEVED
+        return super().update(request, *args, **kwargs)
+
+    @action(methods=['post'], detail=False)
+    def persons(self, request, *args, **kwargs):
+        """新增人工快捷上报事件"""
+        self.serializer_class = serializers.PersonAlarmEventSerializer
+
+        return super().create(request, *args, **kwargs)
+
+    @action(methods=['get'], detail=False)
+    def statistics(self, _):
+        """
+        根据类型/系统/等级对事件数据统计
+        """
+
+        # 查询统计数据
+        priority_data = self.priority_statistics()
+        alarm_type_data = self.alarm_type_statistics()
+        belong_system_data = self.belong_system_statistics()
+
+        # 构造数据
+        priority_count_list = self.structure_priority_data(priority_data)
+        alarm_type_count_list = self.structure_alarm_type_data(alarm_type_data)
+        belong_system_count_list = self.structure_belong_system_data(belong_system_data)
+
+        data = OrderedDict()
+        data['priority_data'] = priority_count_list
+        data['alarm_type_data'] = alarm_type_count_list
+        data['belong_system_data'] = belong_system_count_list
+
+        return self.success_response(data=data)
+
+    @action(methods=['get'], detail=False)
+    def days(self, request):
+        """
+        根据日期间隔对事件数量统计
+        """
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        format_start_date, format_end_date = self.validate_date(start_date), self.validate_date(end_date)
+
+        if format_start_date > format_end_date:
+            self.param_error(param_name='start_date或end_date', errmsg='开始日期不应大于结束日期')
+
+        if not end_date:
+            # 获取结束月份最后一天
+            next_month = format_end_date.replace(day=28) + datetime.timedelta(days=4)
+            format_end_date = next_month - datetime.timedelta(days=next_month.day)
+
+        first_start_time = datetime.datetime.strptime('{0} 00:00:00'.format(format_start_date), "%Y-%m-%d %H:%M:%S")
+        last_end_time = datetime.datetime.strptime('{0} {1}:59:59'.format(format_end_date, '23'), "%Y-%m-%d %H:%M:%S")
+
+        query_data = self.interval_date(first_start_time, last_end_time)
+
+        for son_data in query_data:
+            # 构造查询数据列表、查询数据日期列表
+            integration_data = OrderedDict()
+            integration_data[self.HistoryStatistics.DATE] = son_data[0]
+            integration_data[self.HistoryStatistics.COUNT] = son_data[1]
+            self.event_days_data.append(integration_data)
+            self.count_days_list.append(son_data[0])
+
+        # 构造完整日期查询数据列表
+        event_days_data = self.structure_date_range(start_date, end_date)
+
+        return self.success_response(data=event_days_data)
+
+    @action(methods=['get'], detail=False)
+    def months(self, request):
+        """
+        根据月份间隔对事件数量统计
+        """
+        start_month = request.query_params.get('start_month')
+        end_month = request.query_params.get('end_month')
+        start_date, end_date = self.validate_month(start_month), self.validate_month(end_month)
+        if start_date > end_date:
+            self.param_error(param_name='start_month或end_month', errmsg='开始月份不应大于结束月份')
+
+        # 获取结束月份最后一天
+        next_month = end_date.replace(day=28) + datetime.timedelta(days=4)
+        end_date = next_month - datetime.timedelta(days=next_month.day)
+
+        first_start_time = datetime.datetime.strptime('{0} 00:00:00'.format(start_date), "%Y-%m-%d %H:%M:%S")
+        last_end_time = datetime.datetime.strptime('{0} {1}:59:59'.format(end_date, '23'), "%Y-%m-%d %H:%M:%S")
+
+        query_data = self.interval_month(first_start_time, last_end_time)
+
+        for son_data in query_data:
+            # 构造查询数据列表、查询数据月份列表
+            integration_data = OrderedDict()
+            integration_data[self.HistoryStatistics.MONTH] = son_data[0]
+            integration_data[self.HistoryStatistics.COUNT] = son_data[1]
+            self.event_months_data.append(integration_data)
+            self.count_months_list.append(son_data[0])
+
+        # 构造完整月份查询数据列表
+        event_months_data = self.structure_month_range(start_month, end_month)
+
+        return self.success_response(data=event_months_data)
+
+    def validate_date(self, date):
+        """日期验证"""
+        if date is None:
+            self.param_error(param_name='start_date或end_date', code=ErrorType.NULL)
+        if not date:
+            now = datetime.date.today()
+            date = str(datetime.datetime(now.year, now.month, 1).date())
+        try:
+            date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            raise self.param_error(code=ErrorType.INCORRECT_TYPE, param_name='start_date或end_date')
+
+        return date
+
+    def validate_month(self, month):
+        """月份验证"""
+        if month is None:
+            self.param_error(param_name='start_month或end_month', code=ErrorType.NULL)
+        if not month:
+            self.param_error(param_name='start_month或end_month', code=ErrorType.BLANK)
+
+        try:
+            date = datetime.datetime.strptime(month, "%Y-%m").date()
+        except (TypeError, ValueError):
+            raise self.param_error(code=ErrorType.INCORRECT_TYPE, param_name='start_month或end_month')
+
+        return date
+
+    def interval_date(self, first_start_time, last_end_time):
+        """按照日期统计事件数量"""
+        with connection.cursor() as cursor:
+            # 查询数据
+            sql = 'select DATE_FORMAT(alarm_time,"{0}") {1},count(id) count from tb_basic_alarm_event where ' \
+                  'alarm_time>="{2}" and alarm_time<="{3}" group by {1}'.format(self.HistoryStatistics.DATE_FORMAT,
+                                                                                self.HistoryStatistics.DATE,
+                                                                                first_start_time,
+                                                                                last_end_time)
+            cursor.execute(sql)
+            query_data = cursor.fetchall()
+
+            return query_data
+
+    def interval_month(self, first_start_time, last_end_time):
+        """按照月份统计事件数量"""
+        with connection.cursor() as cursor:
+            # 查询数据
+            sql = 'select DATE_FORMAT(alarm_time,"{0}") {1},count(id) count from tb_basic_alarm_event where ' \
+                  'alarm_time>="{2}" and alarm_time<="{3}" group by {1}'.format(self.HistoryStatistics.MONTH_FORMAT,
+                                                                                self.HistoryStatistics.MONTH,
+                                                                                first_start_time,
+                                                                                last_end_time)
+            cursor.execute(sql)
+            query_data = cursor.fetchall()
+
+            return query_data
+
+    def structure_date_range(self, start_date, end_date):
+        """构造日期间隔统计数据"""
+        default_data_list = []
+        dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+
+        while start_date <= end_date:
+            # 循环构造默认数据
+            default_date_data = OrderedDict()
+            default_date_data['date'] = start_date
+            default_date_data['count'] = 0
+
+            if start_date in self.count_days_list:
+                # 如果默认日期数据查询日期列表中则替换数据
+                for count_date_data in self.event_days_data:
+                    if count_date_data['date'] == start_date:
+                        default_date_data['count'] = count_date_data['count']
+
+            default_data_list.append(default_date_data)
+            dt = dt + datetime.timedelta(1)
+            start_date = dt.strftime("%Y-%m-%d")
+
+        return default_data_list
+
+    def structure_month_range(self, start_month, end_month):
+        """构造月份间隔统计数据"""
+        default_data_list = []
+        dt = datetime.datetime.strptime(start_month, "%Y-%m")
+
+        while start_month <= end_month:
+            # 循环构造默认数据
+            default_date_data = OrderedDict()
+            default_date_data['month'] = start_month
+            default_date_data['count'] = 0
+
+            if start_month in self.count_months_list:
+                # 如果默认日期数据查询日期列表中则替换数据
+                for count_date_data in self.event_months_data:
+                    if count_date_data['month'] == start_month:
+                        default_date_data['count'] = count_date_data['count']
+
+            default_data_list.append(default_date_data)
+            dt = dt + relativedelta(months=1)
+            start_month = dt.strftime("%Y-%m")
+
+        return default_data_list
+
+    def belong_system_statistics(self):
+        """统计事件归属系统事件数量"""
+        with connection.cursor() as cursor:
+            sql = 'select {0}, count({1}) from tb_system_alarm_event  group by {0}'.format(
+                self.EventStatistics.BELONG_SYSTEM, self.EventStatistics.PTR_ID)
+
+            cursor.execute(sql)
+            query_data = cursor.fetchall()
+
+            return query_data
+
+    def alarm_type_statistics(self):
+        """统计报警类型数量"""
+        with connection.cursor() as cursor:
+            sql = 'select {0}, count({1}) from tb_system_alarm_event  group by {0}'.format(
+                self.EventStatistics.ALARM_TYPE, self.EventStatistics.PTR_ID)
+
+            cursor.execute(sql)
+            query_data = cursor.fetchall()
+
+            return query_data
+
+    def priority_statistics(self):
+        """统计事件等级数量"""
+        with connection.cursor() as cursor:
+            sql = 'select {0}, count({1}) from tb_basic_alarm_event  group by {0}'.format(
+                self.EventStatistics.PRIORITY, self.EventStatistics.ID)
+
+            cursor.execute(sql)
+            query_data = cursor.fetchall()
+
+            return query_data
+
+    def structure_priority_data(self, priority_data):
+        """构造事件等级数据"""
+        count_list = []
+        priority_list = []
+
+        for count_info in priority_data:
+            # 构造查询数据
+            count_dict = OrderedDict()
+            count_dict[self.EventStatistics.PRIORITY] = count_info[0]
+            count_dict[self.EventStatistics.COUNT] = count_info[1]
+            count_list.append(count_dict)
+            priority_list.append(count_info[0])
+
+        for priority in range(1, 5):
+            # 构造默认数据
+            priority_dict = OrderedDict()
+            priority_dict[self.EventStatistics.PRIORITY] = priority
+            priority_dict[self.EventStatistics.COUNT] = 0
+
+            # 补全数据
+            if priority not in priority_list:
+                count_list.append(priority_dict)
+        return count_list
+
+    def structure_alarm_type_data(self, alarm_type_data):
+        """构造事件类型数据"""
+        count_list = []
+
+        for count_info in alarm_type_data:
+            count_dict = OrderedDict()
+            count_dict[self.EventStatistics.ALARM_TYPE] = count_info[0]
+            count_dict[self.EventStatistics.COUNT] = count_info[1]
+            count_list.append(count_dict)
+
+        return count_list
+
+    def structure_belong_system_data(self, belong_system_data):
+        """构造事件归属系统数据"""
+        count_list = []
+        belong_system_list = []
+
+        for count_info in belong_system_data:
+            # 构造查询数据
+            count_dict = OrderedDict()
+            count_dict[self.EventStatistics.BELONG_SYSTEM] = count_info[0]
+            count_dict[self.EventStatistics.COUNT] = count_info[1]
+            count_list.append(count_dict)
+            belong_system_list.append(count_info[0])
+
+        for belong_system in DeviceInfo.BelongSystem:
+            # 构造默认数据
+            belong_system_dict = OrderedDict()
+            belong_system_dict[self.EventStatistics.BELONG_SYSTEM] = belong_system
+            belong_system_dict[self.EventStatistics.COUNT] = 0
+
+            # 补全数据
+            if belong_system not in belong_system_list:
+                count_list.append(belong_system_dict)
+
+        return count_list
+
+    def structure_excel_data(self):
+        """构造excel数据"""
+        ws = Workbook(encoding="UTF-8")
+        w = ws.add_sheet(u'基础报警事件')
+        w.write(0, 0, '事件名称')
+        w.write(0, 1, u'事件编号')
+        w.write(0, 2, u'报警时间')
+        w.write(0, 3, u'所属区域')
+        w.write(0, 4, u'所属楼层')
+        w.write(0, 5, u'事件等级')
+        w.write(0, 6, u'状态')
+        w.write(0, 7, u'事件位置')
+        w.write(0, 8, u'事件描述')
+        w.write(0, 9, u'事件类型')
+        # 写入数据
+        excel_row = 1
+        for event_info in self._data:
+            data_name = event_info['event_name']
+            data_code = event_info['event_code']
+            data_time = event_info['alarm_time']
+            data_area_code = event_info['area_code']
+            data_floor_code = event_info['floor_code']
+            data_priority = event_info['priority']
+            event_state = event_info['event_state']
+            event_type = AlarmEvent.event_type_label(event_info['event_type'])
+            if event_state in PersonAlarmEvent.EventState.values:
+                event_state = PersonAlarmEvent.event_state_label(event_state)
+            else:
+                event_state = DeviceAlarmEvent.event_state_label(event_state)
+
+            data_event_state = event_state
+            data_location_detail = event_info['location_detail']
+            data_event_description = event_info['event_description']
+
+            w.write(excel_row, 0, data_name)
+            w.write(excel_row, 1, data_code)
+            w.write(excel_row, 2, data_time)
+            w.write(excel_row, 3, data_area_code)
+            w.write(excel_row, 4, data_floor_code)
+            w.write(excel_row, 5, data_priority)
+            w.write(excel_row, 6, data_event_state)
+            w.write(excel_row, 7, data_location_detail)
+            w.write(excel_row, 8, data_event_description)
+            w.write(excel_row, 9, event_type)
+
+            excel_row += 1
+
+        # ws.save("alarm_event_info.xls")
+
+        return ws
+
+    @staticmethod
+    def structure_empty_excel_data():
+        """构造excel数据模板"""
+        ws = Workbook(encoding="UTF-8")
+        w = ws.add_sheet(u'基础报警事件')
+        w.write(0, 0, '事件名称')
+        w.write(0, 1, u'事件编号')
+        w.write(0, 2, u'报警时间')
+        w.write(0, 3, u'所属区域')
+        w.write(0, 4, u'所属楼层')
+        w.write(0, 5, u'事件等级')
+        w.write(0, 6, u'状态')
+        w.write(0, 7, u'事件位置')
+        w.write(0, 8, u'事件描述')
+        w.write(0, 9, u'事件类型')
+        sio = BytesIO()
+        ws.save(sio)
+        sio.seek(0)
+        response = HttpResponse(content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'attachment; filename={0}'.format('alarm_event_info.xls')
+        response.write(sio.getvalue())
+
+        return response
+
+    def create(self, request, *args, **kwargs):
+        """禁止POST请求创建基础报警事件"""
+        raise MethodNotAllowed(self.request.method)
+
+    def update(self, request, *args, **kwargs):
+        """禁止PUT请求修改事件参数"""
+        raise MethodNotAllowed(self.request.method)
+
+    def destroy(self, request, *args, **kwargs):
+        """禁止DELETE请求删除事件数据"""
+        raise MethodNotAllowed(self.request.method)
+
+
+class QueueStatisticsView(views.CustomGenericAPIView):
+    """排队统计"""
+
+    queryset = models.CameraLineUpRecord.objects.all()
+
+    def get_queue_number(self, resource_type):
+        """获取排队数据
+
+        数据有效期为5分钟, 5分钟内不存在排队数据则为0
+
+        Args:
+            resource_type: 资源类型
+
+        Returns:
+
+        """
+        return self.queryset.filter(
+            camera__resource__resource_type=resource_type,
+            detection_time__gte=datetime.datetime.now() - datetime.timedelta(
+                minutes=models.CameraLineUpRecord.expire)
+        ).aggregate(total_people=Sum('current_queue_number'))['total_people'] or 0
+
+    def get(self, _):
+        """态势首页排队总数
+
+        security_queue_count: 安检口当天的排队总人数
+        counter_queue_count: 值机柜台当天的排队总人数
+        """
+        data = OrderedDict()
+        data['security_queue_count'] = self.get_queue_number(ResourceInfo.ResourceType.SECURITY)
+        data['counter_queue_count'] = self.get_queue_number(ResourceInfo.ResourceType.COUNTER)
+
+        return self.success_response(data=data)
+
+
+# noinspection PyUnresolvedReferences, PyAttributeOutsideInit
+class ResourceTypeMixin:
+    """资源类型工具类
+
+    提供资源类型参数的校验及获取
+    资源类型必传
+    """
+
+    @property
+    def resource_type(self):
+        """资源类型"""
+        if not hasattr(self, '_resource_type'):
+            self._resource_type = self.validate_resource_type()
+
+        return self._resource_type
+
+    def validate_resource_type(self):
+        """资源类型校验"""
+        resource_type = self.request.query_params.get('resource_type')
+
+        if resource_type is None:
+            self.param_error(param_name='resource_type', code=ErrorType.REQUIRED)
+
+        if resource_type not in ResourceInfo.ResourceType:
+            self.param_error(param_name='resource_type')
+
+        return resource_type
+
+
+class PassengerFlowView(views.CustomGenericAPIView, ResourceTypeMixin):
+    """客流分析视图
+
+    返回曲线图数据、总人数、速度
+    """
+
+    HISTORY_DAYS = 7 * 4
+    PREDICTED_CACHE_DATA_EXPIRE = 86400
+    PREDICTED_CACHE_KEY = '{resource_type}_predicted_{current_time_date}'
+
+    @property
+    def current_time(self):
+        """当前时间"""
+        if not hasattr(self, '_current_time'):
+            self._current_time = datetime.datetime.now()
+
+        return self._current_time
+
+    def create_days_data(self):
+        """客流统计数据
+
+        Returns:
+            客流模版数据
+            Examples：
+                00:00:00: 0
+                01:00:00: 10
+                02:00:00: 20
+                ...
+                23:59:59: 200
+        """
+        time_data = OrderedDict()
+
+        for i in range(25):
+            # i-> 0-24
+            if i < 24:
+                # 0-23点
+                time_data[f'{i:02d}:00:00'] = 0
+            else:
+                # 24点
+                time_data['23:59:59'] = 0
+
+        return time_data
+
+    def get_filter_kwargs(self):
+        """获取查询集过滤字段
+
+        出入口数据只对入口进行统计，出口不进行统计
+        """
+        filter_kwargs = OrderedDict()
+        filter_kwargs['camera__resource__resource_type'] = self.resource_type
+
+        if self.resource_type == ResourceInfo.ResourceType.PASSAGEWAY:
+            filter_kwargs['camera__resource__resource_type_sec'] = ResourceInfo.ResourceTypeSecond.ENTRANCE
+
+        return filter_kwargs
+
+    def get_current_aggregate_data(self):
+        """获取实时聚合人数统计数据"""
+        filter_kwargs = self.get_filter_kwargs()
+        filter_kwargs['statistical_time__gte'] = self.current_time.date()
+
+        return models.PeopleCountingRecord.objects.filter(**filter_kwargs).values(
+            'statistical_time').annotate(total_people=Sum('total_people'))
+
+    def get_predicted_aggregate_data(self):
+        """获取预测聚合人数统计数据
+
+        根据当前时间的星期数获取历史4周内的数据，取平均值计算
+
+        Returns：
+            实时人数统计数据字典
+        """
+        filter_kwargs = self.get_filter_kwargs()
+        filter_kwargs['statistical_time__week_day'] = self.current_time.weekday() + 2
+        filter_kwargs['statistical_time__lt'] = self.current_time.date()
+        filter_kwargs['statistical_time__gte'] = self.current_time.date() - datetime.timedelta(
+            days=self.HISTORY_DAYS)
+
+        return models.PeopleCountingRecord.objects.filter(**filter_kwargs).extra(
+            select={"time": "DATE_FORMAT(statistical_time, '%%H:%%i:%%s')"}).values(
+            'time').annotate(total_people=Sum('total_people'))
+
+    def get_current_data(self):
+        """获取实时人数统计数据
+
+        Returns:
+            实时数据字典, 包含曲线图数据，总人数，速度
+        """
+        current_data = OrderedDict()
+        hour = self.current_time.hour + (self.current_time.minute / 60)
+
+        people_current_data = self.get_current_aggregate_data()
+        current_data['current_data'] = self.create_days_data()
+        current_data['current_total_people_number'] = 0
+
+        for row_data in people_current_data:
+            current_data['current_total_people_number'] += int(row_data['total_people'])
+            current_data['current_data'][datetime_to_str(row_data['statistical_time'])] += int(
+                row_data['total_people'])
+
+        if hour > 0:
+            current_data['current_speed'] = math.ceil(
+                current_data['current_total_people_number'] / hour)
+        else:
+            current_data['current_speed'] = current_data['current_total_people_number']
+
+        return current_data
+
+    def get_predicted_data(self):
+        """获取预测数据
+
+        使用redis缓存当天的预测数据，如果缓存不存在就获取后写入缓存
+        缓存有效期为24小时
+        缓存的key根据资源类型和当前时间使用格式化字符串
+        PREDICTED_CACHE_KEY = '{resource_type}_predicted_{current_time_date}'
+
+        Returns:
+            预测数据字典, 包含曲线图数据，总人数，速度
+        """
+        cache_key = self.PREDICTED_CACHE_KEY.format(
+            resource_type=self.resource_type,
+            current_time_date=str(self.current_time.date())
+        )
+
+        predicted_data = cache.get(cache_key)
+        if not predicted_data:
+            predicted_data = self._get_predicted_data()
+            cache.set(cache_key, predicted_data, self.PREDICTED_CACHE_DATA_EXPIRE)
+
+        return predicted_data
+
+    def _get_predicted_data(self):
+        """获取历史预测数据
+
+        Returns:
+            预测数据字典, 包含曲线图数据，总人数，速度
+        """
+        predicted_data = OrderedDict()
+        predicted_aggregate_data = self.get_predicted_aggregate_data()
+        predicted_data['predicted_data'] = self.create_days_data()
+        predicted_data['predicted_total_people_number'] = 0
+
+        for row_data in predicted_aggregate_data:
+            time_ = row_data['time']
+            if '59' in time_:
+                time_ = '23:59:59'
+
+            predicted_data['predicted_data'][time_] += int(row_data['total_people'])
+            predicted_data['predicted_total_people_number'] += int(row_data['total_people'])
+
+        predicted_data['predicted_speed'] = math.ceil(
+            predicted_data['predicted_total_people_number'] / 24)
+
+        return predicted_data
+
+    def get(self, _):
+        """预测及实时人数统计数据获取"""
+        data = OrderedDict()
+        data.update(self.get_current_data())
+        data.update(self.get_predicted_data())
+
+        return self.success_response(data=data)
+
+
+class DeploySnapView(views.ListCustomAPIView, ResourceTypeMixin):
+    """布控抓拍"""
+
+    serializer_class = serializers.DeploySnapSerializer
+    queryset = models.DeployPersonSnapRecord.objects.all()
+
+    def get_queryset(self):
+        """根据资源类型过滤查询集"""
+        return self.queryset.filter(camera__resource__resource_type=self.resource_type).only(
+            'snap_time',
+            'snap_image_url',
+            'camera__resource__name'
+        ).select_related('camera__resource').order_by('-id')
+
+
+class DeployAlarmView(views.ListCustomAPIView, ResourceTypeMixin):
+    """布控报警"""
+
+    serializer_class = serializers.DeployAlarmSerializer
+    queryset = models.DeployAlarmRecord.objects.all().order_by('-id')
+    filter_backends = (CustomDjangoFilterBackend,)
+    filter_class = DeployAlarmFilter
+
+
+class DensityAlarmView(views.ListCustomAPIView):
+    """密度报警记录"""
+
+    serializer_class = serializers.DensityAlarmSerializer
+    queryset = models.PersonDensityRecord.objects.all()
+
+    def get_queryset(self):
+        """获取今天的报警数据"""
+        filter_data = {'resource__resource_type': ResourceInfo.ResourceType.SECURITY_HALL}
+
+        only_fields = [
+            'alarm_image_url',
+            'event__id',
+            'event__alarm_time',
+            'event__priority',
+            'event__device__device_name',
+            'event__device__device_code',
+            'event__device__cameradevice__flow_address'
+        ]
+
+        return self.queryset.filter(**filter_data).only(*only_fields).select_related(
+            'event',
+            'event__device',
+            'event__device__cameradevice'
+        ).order_by('-id')
+
+
+class PostureAlarmView(views.ListCustomAPIView):
+    """姿态动作识别报警列表"""
+
+    serializer_class = serializers.PostureAlarmSerializer
+    queryset = models.PostureAlarmRecord.objects.all()
+
+    def get_queryset(self):
+        """过滤原始查询集
+
+        过滤出反向通道的所有报警,增加关联查询字段及排序
+
+        Returns:
+            queryset: 过滤后的资源查询集
+        """
+        filter_data = {'resource__resource_type': ResourceInfo.ResourceType.REVERSE}
+
+        only_fields = [
+            'alarm_image_url',
+            'event__id',
+            'event__alarm_time',
+            'event__event_name',
+            'resource__name'
+        ]
+
+        return self.queryset.filter(**filter_data).only(*only_fields).select_related(
+            'event', 'resource').order_by('-id')
+
+
+class ScopesAlarmView(views.ListCustomAPIView):
+    """围界设备报警记录"""
+
+    serializer_class = serializers.ScopesAlarmSerializer
+    queryset = models.DeviceAlarmEvent.objects.filter(
+        belong_system=DeviceInfo.BelongSystem.MAINTENANCE).only(
+        'event_name',
+        'alarm_time',
+        'area_code',
+        'priority',
+        'alarm_time',
+        'device__device_name',
+        'device__device_code'
+    ).select_related('device').order_by('-id')
+
+
+class PlacementAlarmView(views.ListCustomAPIView):
+    """机位报警信息"""
+
+    serializer_class = serializers.PlacementAlarmSerializer
+    queryset = models.PlaceAlarmRecord.objects.all().order_by('-id').only(
+        'resource__name',
+        'event__id',
+        'event__alarm_time',
+        'event__event_name'
+    )
+
+
+class PlacementSafeguardView(views.ListCustomAPIView):
+    """机位保障信息"""
+
+    serializer_class = serializers.PlacementSafeguardSerializer
+    queryset = models.PlaceSafeguardRecord.objects.all().order_by('-id').only(
+        'safeguard_name',
+        'safeguard_time',
+        'flight__flight_number',
+        'camera__resource__name'
+    )

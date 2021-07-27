@@ -1,0 +1,267 @@
+"""消息处理worker类
+"""
+import time
+import os
+from pyexpat import ExpatError
+from json import JSONDecodeError, loads
+
+import xmltodict
+import dicttoxml
+from jpype import JClass
+from jpype._core import JVMNotRunning
+
+from security_platform import receive_logger as logger
+
+from core import mixins
+from core.storage import RedisMetricsStorage
+from settings import settings
+from utils.exceptions import CustomerException, MsgParseError, StorageMsgMetricsError
+from utils.topic import PERSON_SNAP_TOPIC_PREFIX
+
+
+class GenericWorker:
+
+    def __init__(self, queue):
+        self.queue = queue
+
+    def handler_not_found(self, _):
+        logger.debug('不处理的消息')
+
+    def dispatch(self, msg):
+        logger.debug('接收消息为:%s', msg)
+        dict_msg = self.parse_msg_to_dict(msg)
+        handler_name = self.get_msg_handler_name(dict_msg)
+        msg_handler = self.get_msg_handler(handler_name)
+        response = msg_handler(dict_msg)
+        # logger.info(response)
+
+    def parse_msg_to_dict(self, msg):
+        raise NotImplementedError('method parse_data() must be Implemented.')
+
+    def get_msg_handler_name(self, msg):
+        raise NotImplementedError('method get_msg_handler_name() must be Implemented.')
+    
+    def get_msg_handler(self, handler_name):
+        return getattr(self, handler_name, self.handler_not_found)
+
+    def get_msg(self):
+        return self.queue.get()
+
+    def loop(self):
+        try:
+            self.dispatch(self.get_msg())
+        except (RuntimeError, JVMNotRunning, BrokenPipeError, EOFError):
+            # 程序退出时抛出的异常
+            pass
+        except CustomerException as exc:
+            # 消息处理内部抛出的异常信息
+            logger.warning(exc)
+        except Exception as exc:
+            # 未捕获到的异常信息
+            logger.error('消息处理异常:%s', exc, exc_info=True)
+
+    # noinspection PyBroadException
+    def loop_forever(self):
+        """从队列中拿数据处理"""
+        while True:
+            self.loop()
+
+
+class MetricsCollectorGenericWorker(GenericWorker):
+
+    belong_system = None
+    metrics_storage = RedisMetricsStorage()
+
+    def __init__(self, *args, **kwargs):
+        self.storage_msg = None
+        super().__init__(*args, **kwargs)
+
+    def get_belong_system(self):
+        assert self.belong_system is not None, (
+                "'%s' should either include a `belong_system` attribute, "
+                "or override the `get_belong_system()` method." % self.__class__.__name__
+        )
+
+        return self.belong_system
+
+    def logger_error(self, exc, exc_info=False):
+        logger.error(f'保存消息调用次数失败', exc, exc_info=exc_info)
+
+    def storage(self):
+        try:
+            self.metrics_storage.storage(self.get_belong_system())
+        except (StorageMsgMetricsError, AssertionError) as exc:
+            # redis存储失败或函数调用或配置失败
+            self.logger_error(exc)
+        except Exception as exc:
+            # 未获取到的异常信息
+            self.logger_error(exc, exc_info=True)
+
+    def handler_not_found(self, _):
+        self.storage_msg = False
+        super().handler_not_found(_)
+
+    def dispatch(self, msg):
+        """
+        统计代码占用时间约:0.0002-0.0005, 基本无影响
+        人数统计：0.0148-0.016 76路
+        排队人数：0.014-0.028  143路 20s一轮
+        人群密度：0.013-0.028  2路
+        姿态动作：0.013-0.021  2路
+        人脸抓拍：0.011-0.026  100路 一天10w, 60天600w
+        人脸报警：0.012-0.018  100路 报警略少
+        机位检测：0.012-0.018  18路
+        舱门检测：0.012-0.018  18路
+        道口车辆：0.008-0.019
+        围界报警：0.022-0.034
+        """
+        self.storage_msg = True
+        s = time.perf_counter()
+        super().dispatch(msg)
+        e = time.perf_counter()
+        print('use', e-s)
+        print('qsize', self.queue.qsize())
+
+        if self.storage_msg:
+            self.storage()
+
+
+class TopicWorker(MetricsCollectorGenericWorker):
+    """MQ消息处理"""
+
+    def __init__(self, *args, **kwargs):
+        self.topic = None
+        super().__init__(*args, **kwargs)
+
+    def get_belong_system(self):
+        assert self.topic is not None, (
+            'please set a `topic` instance attribute before call method get_belong_system()'
+        )
+        return self.topic.split('/')[0]
+
+    def parse_msg_to_dict(self, msg):
+        self.topic = msg[0]
+
+        try:
+            dict_msg = loads(msg[1])
+        except JSONDecodeError as exc:
+            raise MsgParseError(f'json数据解析失败:{exc}')
+        
+        return dict_msg
+        
+    def get_msg_handler_name(self, dict_msg):
+        msg_topic = self.topic
+
+        if msg_topic.startswith(PERSON_SNAP_TOPIC_PREFIX):
+            # 抓拍主题
+            msg_topic = PERSON_SNAP_TOPIC_PREFIX
+
+        return msg_topic.lower().replace('/', '_')
+    
+
+class EsbReceiveWorker(MetricsCollectorGenericWorker,
+                       mixins.IISBasicResourceMixin,
+                       mixins.IISFlightMixin):
+    """接收航班消息处理"""
+
+    belong_system = 'iis'
+
+    def parse_msg_to_dict(self, msg):
+        try:
+            return xmltodict.parse(str(msg))
+        except ExpatError as exc:
+            raise MsgParseError(f'xml数据解析失败:{exc}')
+
+    def get_msg_handler_name(self, dict_msg):
+        return f"iis_{dict_msg['MSG']['META']['STYP'].lower()}"
+
+    def get_msg(self):
+        return self.queue.take()
+
+
+class EsbPublishWorker(MetricsCollectorGenericWorker):
+    """发送航班消息处理"""
+
+    # 不限制频率的消息
+    ignore_frequency_msg_types = ()
+    # worker归属系统
+    belong_system = 'iis_publish'
+
+    def __init__(self, *args, **kwargs):
+        # 消息发送时间
+        self.last_msg_send_timestamp = 0
+        # 消息发送序号
+        self.publish_sequence = 1
+        super().__init__(*args, **kwargs)
+
+    def dict_to_xml(self, dict_data):
+        """将字典数据转为xml数据
+
+        Args:
+            dict_data: 需要转换的字典数据
+
+        Returns:
+            xml_data: 字典转换后xml数据
+        """
+        return dicttoxml.dicttoxml(dict_data, custom_root="MSG", attr_type=False).decode()
+
+    def is_send_msg(self, msg):
+        """发送频率限制"""
+        current_timestamp = time.time()
+        if msg['META']['STYP'] in self.ignore_frequency_msg_types:
+            # 不限制发送频率的消息
+            is_send = True
+        else:
+            is_send = (time.time() - self.last_msg_send_timestamp) >= settings.ESB_SEND_FREQUENCY
+
+        if is_send:
+            self.last_msg_send_timestamp = current_timestamp
+
+        return is_send
+
+    def msg_extra_process(self, msg):
+        """消息额外处理"""
+        msg['META']['SEQN'] = self.publish_sequence
+        self.publish_sequence += 1
+
+        return self.dict_to_xml(msg)
+
+    def send_msg(self, msg):
+        """连不上会卡顿10s"""
+        producer = self.esb_client.getInstance.producer(msg)
+        logger.debug(f'发送航班系统消息 {msg}')
+        logger.debug(f'发送航班系统消息完成 code:{producer.getSendState()}, msg:{producer.getSendDesc()}')
+
+    def _set_esb_client(self):
+        self._esb_client = JClass("com.caacitc.rabbitmq.client.EsbClient")
+
+    @property
+    def esb_client(self):
+        if not hasattr(self, '_esb_client'):
+            self._set_esb_client()
+
+        return self._esb_client
+
+    def dispatch(self, msg):
+        if self.is_send_msg(msg):
+            self.send_msg(self.msg_extra_process(msg))
+            self.storage()
+
+
+# class VMSWork(TopicWorker, mixins.VMSMixin):
+#     pass
+
+
+class CommonWork(TopicWorker,
+                 mixins.VideoAnalysisMixin,
+                 mixins.MaintenanceMixin,
+                 mixins.EntranceMixin,
+                 mixins.PassCardMixin,
+                 mixins.FireMixin,
+                 mixins.ConcealMixin,
+                 mixins.PassageWayMixin,
+                 mixins.ParkMixin,
+                 mixins.IISFlightMixin,
+                 mixins.CameraMixin):
+    """围界/门禁/消防/隐蔽报警/道口/停车场/视频监控事件处理"""
+    pass

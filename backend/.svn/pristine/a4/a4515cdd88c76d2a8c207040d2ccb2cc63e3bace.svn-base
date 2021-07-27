@@ -1,0 +1,6 @@
+from multiprocessing import Manager
+
+Queue = Manager().Queue
+
+# 存储发送给esb消息的消息队列
+esb_send_msg_queue = Queue()

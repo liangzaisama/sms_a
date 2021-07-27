@@ -1,0 +1,507 @@
+"""消息处理的Mixin类，配置装饰器及数据对象进行业务处理。
+
+由消息worker类继承Mixin类，来获取对应的实现消息处理方法。
+
+Example:
+    class CommonWork(AbstractWorker,
+                 mixins.PassageWayMixin,
+                 mixins.CameraMixin):
+    pass
+"""
+import event
+import device
+import decorators
+import analysis_event
+from security_platform import receive_logger as logger
+
+
+class IISFlightMixin:
+    """航班系统航班消息处理"""
+
+    @decorators.FlightLabelDecorator
+    def iis_dfdl(self, label):
+        """航班整表同步事件
+
+        根据传入标签数据对象调用对象的方法即可实现业务逻辑
+        synchronization: 整表同步数据
+        create: 新增数据
+        delete: 删除数据
+        update: 更新数据
+
+        Args:
+            label: 标签数据操作对象
+        """
+        logger.info('航班整表同步')
+        label.synchronization()
+
+    @decorators.FlightLabelDecorator
+    def iis_dfie(self, label):
+        """航班动态增加"""
+        logger.info('航班增加')
+        label.create()
+
+    @decorators.FlightLabelDecorator
+    def iis_dfde(self, label):
+        """航班动态删除"""
+        label.delete()
+
+    @decorators.FlightLabelDecorator
+    def iis_afid(self, label):
+        """航班衔接变更"""
+        label.update(update_fields=['af_id'])
+
+    @decorators.FlightLabelDecorator
+    def iis_sflg(self, label):
+        """共享航班变更"""
+        label.update(update_fields=['flight_number_share'])
+
+    @decorators.FlightLabelDecorator
+    def iis_airl(self, label):
+        """航线变更"""
+        label.update(
+            update_fields=['takeoff_iata', 'destination_iata', 'stopover_iata', 'plan_takeoff', 'actual_arrive',
+                           'plan_arrival', 'estimate_takeoff', 'estimate_arrival', 'actual_takeoff'])
+
+    @decorators.FlightLabelDecorator
+    def iis_hbtt(self, label):
+        """航班号变更"""
+        label.update(update_fields=['flight_number', 'company'])
+
+    @decorators.FlightLabelDecorator
+    def iis_dlye(self, label):
+        """航班延误"""
+        label.update(
+            update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son', 'estimate_takeoff'])
+
+    @decorators.FlightLabelDecorator
+    def iis_cane(self, label):
+        """航班取消"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    @decorators.FlightLabelDecorator
+    def iis_rtne(self, label):
+        """航班返回"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    @decorators.FlightLabelDecorator
+    def iis_bake(self, label):
+        """航班滑回"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    @decorators.FlightLabelDecorator
+    def iis_alte(self, label):
+        """航班备降"""
+        label.update(update_fields=['exception_status', 'exception_reason_father', 'exception_reason_son'])
+
+    @decorators.FlightLabelDecorator
+    def iis_fptt(self, label):
+        """航班计划时间变更"""
+        label.update(update_fields=['plan_takeoff', 'plan_arrival'])
+
+    @decorators.FlightLabelDecorator
+    def iis_fett(self, label):
+        """航班预计时间变更"""
+        label.update(update_fields=['estimate_takeoff', 'estimate_arrival'])
+
+    @decorators.FlightLabelDecorator
+    def iis_frtt(self, label):
+        """航班实际时间变更"""
+        label.update(update_fields=['actual_takeoff', 'actual_arrive'])
+
+    @decorators.FlightLabelDecorator
+    def iis_gtls(self, label):
+        """航班登机门变更"""
+        label.update(update_fields=['boarding_gate'])
+
+    @decorators.FlightLabelDecorator
+    def iis_blls(self, label):
+        """航班行李转盘变更"""
+        label.update(update_fields=['baggage_turntable'])
+
+    @decorators.FlightLabelDecorator
+    def iis_trml(self, label):
+        """航站楼变更 """
+        label.update(update_fields=['terminal_info', 'inter_terminal_info'])
+
+    @decorators.FlightLabelDecorator
+    def iis_fatt(self, label):
+        """航班属性变更"""
+        label.update(update_fields=['flight_property'])
+
+    @decorators.FlightLabelDecorator
+    def iis_bore(self, label):
+        """航班开始登机"""
+        label.update()
+
+    @decorators.FlightLabelDecorator
+    def iis_poke(self, label):
+        """航班结束登机"""
+        label.update()
+
+
+class IISExceptionMixin:
+    """航班系统异常消息处理"""
+
+    @decorators.FlightExceptionDecorator
+    def iis_arie(self, label):
+        """航班异常消息新增"""
+        label.create()
+
+    @decorators.FlightExceptionDecorator
+    def iis_arue(self, label):
+        """航班异常消息修改"""
+        label.update()
+
+    @decorators.FlightExceptionDecorator
+    def iis_arde(self, label):
+        """航班异常消息删除"""
+        label.delete()
+
+    @decorators.FlightExceptionDecorator
+    def iis_ardl(self, label):
+        """航班异常整表同步"""
+        label.synchronization()
+
+
+class IISCompanyMixin:
+    """航班系统航空公司消息处理"""
+
+    @decorators.FlightCompanyLabelDecorator
+    def iis_awie(self, label):
+        """航空公司新增"""
+        label.create()
+
+    @decorators.FlightCompanyLabelDecorator
+    def iis_awue(self, label):
+        """航空公司修改"""
+        label.update()
+
+    @decorators.FlightCompanyLabelDecorator
+    def iis_awde(self, label):
+        """航空公司删除"""
+        label.delete()
+
+    @decorators.FlightCompanyLabelDecorator
+    def iis_awdl(self, label):
+        """航空公司整表同步"""
+        label.synchronization()
+
+
+class IISAirportMixin:
+    """航班系统机场消息处理"""
+
+    @decorators.AirportDecorator
+    def iis_apie(self, label):
+        """机场新增"""
+        label.create()
+
+    @decorators.AirportDecorator
+    def iis_apue(self, label):
+        """机场修改"""
+        label.update()
+
+    @decorators.AirportDecorator
+    def iis_apde(self, label):
+        """机场删除"""
+        label.delete()
+
+    @decorators.AirportDecorator
+    def iis_apdl(self, label):
+        """机场整表同步"""
+        label.synchronization()
+
+
+class MaintenanceMixin:
+    """围界事件处理"""
+
+    @decorators.AlarmTriggerDecorator
+    def ais_alarm_trigger(self, label):
+        """围界报警触发事件
+
+        此处跟航班不同，需要调用对应的数据对象 此处是MaintenanceEventResource来调用对应的操作
+
+        Args:
+            label: 解析后的数据标签
+
+        Returns:
+            result: 创建或更新的结果，创建时返回数据对象，更新时返回更新成功的行数
+        """
+        return event.MaintenanceEventResource(label).create()
+
+    @decorators.AlarmProcessDecorator
+    def ais_alarm_ack(self, label):
+        """围界报警确认"""
+        return event.MaintenanceEventResource(label, action='ack').update()
+
+    @decorators.AlarmProcessDecorator
+    def ais_alarm_deactive(self, label):
+        """围界报警处置"""
+        return event.MaintenanceEventResource(label, action='deactive').update()
+
+    @decorators.DeviceDecorator
+    def ais_device_add(self, label):
+        """围界设备新增"""
+        return device.MaintenanceDeviceResource(label).create()
+
+    @decorators.DeviceDecorator
+    def ais_device_delete(self, label):
+        """围界设备删除"""
+        return device.MaintenanceDeviceResource(label, action='delete').delete()
+
+    @decorators.DeviceDecorator
+    def ais_device_update(self, label):
+        """围界设备更新"""
+        return device.MaintenanceDeviceResource(label).update()
+
+    @decorators.DeviceStateDecorator
+    def ais_device_statechange(self, label):
+        """围界设备状态变更"""
+        return device.MaintenanceDeviceResource(label, action='state').update()
+
+
+class EntranceMixin:
+    """门禁事件处理"""
+
+    @decorators.AlarmTriggerDecorator
+    def acs_alarm_trigger(self, label):
+        """门禁报警触发"""
+        return event.EntranceEventResource(label).create()
+
+    @decorators.AlarmProcessDecorator
+    def acs_alarm_ack(self, label):
+        """门禁报警确认"""
+        return event.EntranceEventResource(label, action='ack').update()
+
+    @decorators.AlarmProcessDecorator
+    def acs_alarm_deactive(self, label):
+        """门禁报警处置"""
+        return event.EntranceEventResource(label, action='deactive').update()
+
+    @decorators.DeviceDecorator
+    def acs_device_add(self, label):
+        """门禁设备新增"""
+        return device.EntranceDeviceResource(label).create()
+
+    @decorators.DeviceDecorator
+    def acs_device_delete(self, label):
+        """门禁设备删除"""
+        return device.EntranceDeviceResource(label, action='delete').delete()
+
+    @decorators.DeviceDecorator
+    def acs_device_update(self, label):
+        """门禁设备更新"""
+        return device.EntranceDeviceResource(label).update()
+
+    @decorators.DeviceStateDecorator
+    def acs_device_statechange(self, label):
+        """门禁设备状态变更"""
+        return device.EntranceDeviceResource(label, action='state').update()
+
+    @decorators.EntranceSlotDecorator
+    def acs_accesscontrol_paybycard(self, label):
+        """门禁设备刷卡记录"""
+        return device.EntranceSlotCardResource(label).create()
+
+
+class FireMixin:
+    """消防事件处理"""
+
+    @decorators.AlarmTriggerDecorator
+    def xfhz_alarm_trigger(self, label):
+        """消防报警触发"""
+        return event.FireEventResource(label).create()
+
+    @decorators.AlarmProcessDecorator
+    def xfhz_alarm_ack(self, label):
+        """消防报警确认"""
+        return event.FireEventResource(label, action='ack').update()
+
+    @decorators.AlarmProcessDecorator
+    def xfhz_alarm_deactive(self, label):
+        """消防报警处置"""
+        return event.FireEventResource(label, action='deactive').update()
+
+    @decorators.DeviceDecorator
+    def xfhz_device_add(self, label):
+        """消防设备新增"""
+        return device.FireDeviceResource(label).create()
+
+    @decorators.DeviceDecorator
+    def xfhz_device_delete(self, label):
+        """消防设备删除"""
+        return device.FireDeviceResource(label, action='delete').delete()
+
+    @decorators.DeviceDecorator
+    def xfhz_device_update(self, label):
+        """消防设备更新"""
+        return device.FireDeviceResource(label).update()
+
+    @decorators.DeviceStateDecorator
+    def xfhz_device_statechange(self, label):
+        """消防设备状态变更"""
+        return device.FireDeviceResource(label, action='state').update()
+
+
+class ConcealMixin:
+    """隐蔽报警事件处理"""
+
+    @decorators.AlarmTriggerDecorator
+    def ybbj_alarm_trigger(self, label):
+        """隐蔽报警触发"""
+        return event.ConcealEventResource(label).create()
+
+    @decorators.AlarmProcessDecorator
+    def ybbj_alarm_ack(self, label):
+        """隐蔽报警确认"""
+        return event.ConcealEventResource(label, action='ack').update()
+
+    @decorators.AlarmProcessDecorator
+    def ybbj_alarm_deactive(self, label):
+        """隐蔽报警处置"""
+        return event.ConcealEventResource(label, action='deactive').update()
+
+    @decorators.DeviceDecorator
+    def ybbj_device_add(self, label):
+        """隐蔽设备新增"""
+        return device.ConcealDeviceResource(label).create()
+
+    @decorators.DeviceDecorator
+    def ybbj_device_delete(self, label):
+        """隐蔽设备删除"""
+        return device.ConcealDeviceResource(label, action='delete').delete()
+
+    @decorators.DeviceDecorator
+    def ybbj_device_update(self, label):
+        """隐蔽设备更新"""
+        return device.ConcealDeviceResource(label).update()
+
+    @decorators.DeviceStateDecorator
+    def ybbj_device_statechange(self, label):
+        """隐蔽设备状态变更"""
+        return device.ConcealDeviceResource(label, action='state').update()
+
+
+class PassageWayMixin:
+    """道口事件处理"""
+
+    @decorators.AlarmTriggerDecorator
+    def cms_alarm_trigger(self, label):
+        """道口报警触发"""
+        return event.PassageWayEventResource(label).create()
+
+    @decorators.AlarmProcessDecorator
+    def cms_alarm_ack(self, label):
+        """道口报警确认"""
+        return event.PassageWayEventResource(label, action='ack').update()
+
+    @decorators.AlarmProcessDecorator
+    def cms_alarm_deactive(self, label):
+        """道口报警处置"""
+        return event.PassageWayEventResource(label, action='deactive').update()
+
+    @decorators.DeviceDecorator
+    def cms_device_add(self, label):
+        """道口设备新增"""
+        return device.PassageWayDeviceResource(label).create()
+
+    @decorators.DeviceDecorator
+    def cms_device_delete(self, label):
+        """道口设备删除"""
+        return device.PassageWayDeviceResource(label, action='delete').delete()
+
+    @decorators.DeviceDecorator
+    def cms_device_update(self, label):
+        """道口设备更新"""
+        return device.PassageWayDeviceResource(label).update()
+
+    @decorators.DeviceStateDecorator
+    def cms_device_statechange(self, label):
+        """道口设备状态变更"""
+        return device.PassageWayDeviceResource(label, action='state').update()
+
+
+class VideoAnalysisMixin:
+    """视频分析报警消息处理"""
+
+    def zvams_alarm_trigger(self, label):
+        """布控报警"""
+        return analysis_event.DeployAnalysisEventResource(label).create()
+
+    def zvams_analysis_density_alarm(self, label):
+        """密度报警"""
+        return analysis_event.DensityAnalysisEventResource(label).create()
+
+    def zvams_analysis_queue_alarm(self, label):
+        """排队报警"""
+        return analysis_event.QueueAnalysisEventResource(label).create()
+
+    def zvams_discern_behavior_areainvasion(self, label):
+        """入侵"""
+        return analysis_event.InvasionAnalysisEventResource(label).create()
+
+    def zvams_discern_behavior_border(self, label):
+        """越界"""
+        return analysis_event.BorderAnalysisEventResource(label).create()
+
+    def zvams_discern_behavior_wandering(self, label):
+        """徘徊"""
+        return analysis_event.WanderAnalysisEventResource(label).create()
+
+    def zvams_discern_behavior_carryover(self, label):
+        """遗留物"""
+        return analysis_event.RemnantAnalysisEventResource(label).create()
+
+    def zvams_discern_behavior_posture(self, label):
+        """姿态"""
+        return analysis_event.PostureAnalysisEventResource(label).create()
+
+    # def zvams_face_capture(self):
+    #     """布控抓拍"""
+    #     pass
+    #
+    # def zvams_analysis_people_queue(self, label):
+    #     """排队实时"""
+    #     return analysis.LineUpResource(label).update()
+    #
+    # def zvams_analysis_people_counting(self, label):
+    #     """人数统计实时"""
+    #     return analysis.PeopleCountingResource(label).synchronization()
+
+
+class CameraMixin:
+    """视频监控事件处理"""
+
+    # @decorators.AlarmTriggerDecorator
+    # def vms_alarm_trigger(self, label):
+    #     """摄像机报警触发"""
+    #     return event.CameraEventResource(label).create()
+
+    # @decorators.AlarmProcessDecorator
+    # def vms_alarm_ack(self, label):
+    #     """摄像机报警确认"""
+    #     return event.CameraEventResource(label, action='ack').update()
+
+    # @decorators.AlarmProcessDecorator
+    # def vms_alarm_deactive(self, label):
+    #     """摄像机报警处置"""
+    #     return event.CameraEventResource(label, action='deactive').update()
+
+    @decorators.DeviceDecorator
+    def vms_device_add(self, label):
+        """摄像机设备新增"""
+        return device.CameraDeviceResource(label).create()
+
+    @decorators.DeviceDecorator
+    def vms_device_delete(self, label):
+        """摄像机设备删除"""
+        return device.CameraDeviceResource(label, action='delete').delete()
+
+    @decorators.DeviceDecorator
+    def vms_device_update(self, label):
+        """摄像机设备更新"""
+        return device.CameraDeviceResource(label).update()
+
+    @decorators.DeviceStateDecorator
+    def vms_device_statechange(self, label):
+        """摄像机设备状态变更"""
+        return device.CameraDeviceResource(label, action='state').update()

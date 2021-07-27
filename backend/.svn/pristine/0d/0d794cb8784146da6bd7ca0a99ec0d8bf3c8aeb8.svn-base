@@ -1,0 +1,31 @@
+from django.db import models
+
+from security_platform import TextChoices
+
+
+class SystemConfig(models.Model):
+    """用户IP白名单"""
+
+    class ConfigKey(TextChoices):
+        SECURITY_SPEED = 'security_speed', '安检速度'
+        EVENT_DELETE = 'event_delete', '报警事件删除'
+        EVENT_CLOSE = 'event_close', '报警事件自动关闭'
+
+    config_key = models.CharField('系统配置名称', unique=True, max_length=20)
+    config_value = models.CharField('系统配置值', max_length=100)
+
+    class Meta:
+        verbose_name = '系统配置'
+        verbose_name_plural = verbose_name
+        db_table = 'tb_system_config'
+
+    @classmethod
+    def config_data_init(cls):
+        # 安检速度，默认30, 单位:人/小时
+        cls.objects.get_or_create(config_key=cls.ConfigKey.SECURITY_SPEED, defaults={'config_value': 30})
+
+        # 报警事件删除 默认365天 单位:天
+        cls.objects.get_or_create(config_key=cls.ConfigKey.EVENT_DELETE, defaults={'config_value': 365})
+
+        # 报警事件自动关闭(不可生成事件工单) 默认1小时 单位:小时
+        cls.objects.get_or_create(config_key=cls.ConfigKey.EVENT_CLOSE, defaults={'config_value': 1})

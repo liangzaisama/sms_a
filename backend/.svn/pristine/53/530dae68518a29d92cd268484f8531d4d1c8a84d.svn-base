@@ -1,0 +1,25 @@
+"""
+删除历史的视频分析数据
+
+非报警  默认30天
+布控抓拍 30天
+人数统计 60天
+机位保障 30天
+排队人数：不删除，跟摄像机一对一
+
+报警事件已关闭且超过60天
+密度报警
+布控报警
+机位报警
+行为识别报警
+姿态报警
+"""
+from datetime import datetime, timedelta
+
+import django
+from django.db import connection
+
+from manage import set_django_module
+set_django_module()
+django.setup()
+
