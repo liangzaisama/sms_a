@@ -15,21 +15,7 @@ import django
 
 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(base_dir))
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "security_platform.settings.%s" % 'dev')
-# sys.path.insert(0, os.path.join(base_dir+'/security_platform'))
 
-# try:
-#     from manage import set_django_module
-#
-#     set_django_module()
-#     django.setup()
-#
-#     from security_platform import logger, config_parser
-#     from settings import dev
-#     from devices.models import DeviceInfo
-#     # from core.ws import ws_connections
-# except Exception as e:
-#     raise ImportError("Couldn't import DJANGO_SETTINGS_MODULE")
 
 test_list = [4, 3, 2, 1, 5, 3, 6]
 
